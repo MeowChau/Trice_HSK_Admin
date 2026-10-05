@@ -1,0 +1,15 @@
+export enum QuestionTypeEnum {
+  MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
+  TRUE_FALSE = 'TRUE_FALSE',
+  MATCHING = 'MATCHING',
+  FILL_IN_BLANK = 'FILL_IN_BLANK',
+  SHORT_ANSWER = 'SHORT_ANSWER',
+  ESSAY = 'ESSAY',
+}
+
+export enum QuestionSkillEnum {
+  LISTENING = 'LISTENING',
+  READING = 'READING',
+  WRITING = 'WRITING',
+  SPEAKING = 'SPEAKING',
+}
