@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber } from 'class-validator';
+import { IsIn } from 'class-validator';
+import { StatusEnum } from '../statuses.enum';
 
 export class StatusDto {
   @ApiProperty()
-  @IsNumber()
+  @IsIn([StatusEnum.active, StatusEnum.inactive, StatusEnum.pending])
   id: number | string;
 }

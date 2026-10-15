@@ -6,6 +6,8 @@ import {
   TESTER_PASSWORD,
   MAIL_HOST,
   MAIL_PORT,
+  ADMIN_EMAIL,
+  ADMIN_PASSWORD,
 } from '../utils/constants';
 import type { MailMessage } from '../utils/types/mail-message.type';
 
@@ -16,6 +18,43 @@ describe('Auth Module', () => {
   const newUserLastName = `E2E`;
   const newUserEmail = `User.${Date.now()}@example.com`;
   const newUserPassword = `secret`;
+  let adminToken: string;
+
+  beforeAll(async () => {
+    const response = await request(app)
+      .post('/api/v1/auth/email/login')
+      .send({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .expect(200);
+    adminToken = response.body.token;
+  });
+
+  async function approveUser(email: string): Promise<void> {
+    for (let page = 1; page <= 10; page++) {
+      const response = await request(app)
+        .get('/api/v1/users')
+        .auth(adminToken, { type: 'bearer' })
+        .query({
+          page,
+          limit: 50,
+          sort: JSON.stringify([{ orderBy: 'createdAt', order: 'DESC' }]),
+        })
+        .expect(200);
+      const user = response.body.data.find(
+        (entry: { id: number | string; email: string }) =>
+          entry.email === email.toLowerCase(),
+      );
+      if (user) {
+        await request(app)
+          .patch(`/api/v1/users/${user.id}`)
+          .auth(adminToken, { type: 'bearer' })
+          .send({ status: { id: 1 } })
+          .expect(200);
+        return;
+      }
+      if (!response.body.hasNextPage) break;
+    }
+    throw new Error(`Registered user ${email} was not found for approval`);
+  }
 
   describe('Registration', () => {
     it('should fail with exists email: /api/v1/auth/email/register (POST)', () => {
@@ -23,6 +62,7 @@ describe('Auth Module', () => {
         .post('/api/v1/auth/email/register')
         .send({
           email: TESTER_EMAIL,
+          username: TESTER_EMAIL,
           password: TESTER_PASSWORD,
           firstName: 'Tester',
           lastName: 'E2E',
@@ -38,6 +78,7 @@ describe('Auth Module', () => {
         .post('/api/v1/auth/email/register')
         .send({
           email: newUserEmail,
+          username: newUserEmail.toLowerCase(),
           password: newUserPassword,
           firstName: newUserFirstName,
           lastName: newUserLastName,
@@ -46,13 +87,13 @@ describe('Auth Module', () => {
     });
 
     describe('Login', () => {
-      it('should successfully with unconfirmed email: /api/v1/auth/email/login (POST)', () => {
+      it('should reject login while awaiting approval: /api/v1/auth/email/login (POST)', () => {
         return request(app)
           .post('/api/v1/auth/email/login')
           .send({ email: newUserEmail, password: newUserPassword })
-          .expect(200)
+          .expect(422)
           .expect(({ body }) => {
-            expect(body.token).toBeDefined();
+            expect(body.errors.status).toBe('accountNotActive');
           });
       });
     });
@@ -80,7 +121,7 @@ describe('Auth Module', () => {
           .expect(204);
       });
 
-      it('should fail for already confirmed email: /api/v1/auth/email/confirm (POST)', async () => {
+      it('should accept an already confirmed email: /api/v1/auth/email/confirm (POST)', async () => {
         const hash = await request(mail)
           .get('/email')
           .then(({ body }) =>
@@ -99,13 +140,23 @@ describe('Auth Module', () => {
           .send({
             hash,
           })
-          .expect(404);
+          .expect(204);
+      });
+
+      it('should still require approval after confirming email', async () => {
+        await request(app)
+          .post('/api/v1/auth/email/login')
+          .send({ email: newUserEmail, password: newUserPassword })
+          .expect(422);
       });
     });
   });
 
   describe('Login', () => {
-    it('should successfully for user with confirmed email: /api/v1/auth/email/login (POST)', () => {
+    beforeAll(async () => {
+      await approveUser(newUserEmail);
+    });
+    it('should successfully for an approved user with confirmed email: /api/v1/auth/email/login (POST)', () => {
       return request(app)
         .post('/api/v1/auth/email/login')
         .send({ email: newUserEmail, password: newUserPassword })
@@ -131,11 +182,14 @@ describe('Auth Module', () => {
         .post('/api/v1/auth/email/register')
         .send({
           email: userEmail,
+          username: userEmail,
           password: userOldPassword,
           firstName: `Tester${Date.now()}`,
           lastName: 'E2E',
         })
         .expect(204);
+
+      await approveUser(userEmail);
 
       await request(app)
         .post('/api/v1/auth/forgot/password')
@@ -259,7 +313,7 @@ describe('Auth Module', () => {
     });
 
     it('should update profile successfully: /api/v1/auth/me (PATCH)', async () => {
-      const newUserNewName = Date.now();
+      const newUserNewName = String(Date.now());
       const newUserNewPassword = 'new-secret';
       const newUserApiToken = await request(app)
         .post('/api/v1/auth/email/login')
@@ -317,11 +371,14 @@ describe('Auth Module', () => {
         .post('/api/v1/auth/email/register')
         .send({
           email: newUserEmail,
+          username: newUserEmail,
           password: newUserPassword,
           firstName: newUserFirstName,
           lastName: newUserLastName,
         })
         .expect(204);
+
+      await approveUser(newUserEmail);
 
       const newUserApiToken = await request(app)
         .post('/api/v1/auth/email/login')

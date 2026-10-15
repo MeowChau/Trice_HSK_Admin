@@ -14,6 +14,13 @@ const idType = (databaseConfig() as DatabaseConfig).isDocumentDatabase
 
 export class User {
   @ApiProperty({
+    type: () => Date,
+    nullable: true,
+  })
+  @Expose({ groups: ['me', 'admin'] })
+  emailVerifiedAt?: Date | null;
+
+  @ApiProperty({
     type: idType,
   })
   id: number | string;

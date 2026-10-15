@@ -1,0 +1,8 @@
+# Used by tricehsk-compose / the CD service after installing CI/CD on the VPS.
+services:
+  api:
+    image: ${TRICEHSK_API_IMAGE:?Use the CI deployment wrapper}
+  admin:
+    image: ${TRICEHSK_ADMIN_IMAGE:?Use the CI deployment wrapper}
+  web:
+    image: ${TRICEHSK_WEB_IMAGE:-nginx:stable-alpine}

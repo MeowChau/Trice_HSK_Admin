@@ -1,3 +1,5 @@
+import { ActiveGuard } from '../auth/guards/active.guard';
+import { UserIdPipe } from '../utils/pipes/user-id.pipe';
 import {
   Controller,
   Get,
@@ -38,7 +40,7 @@ import { infinityPagination } from '../utils/infinity-pagination';
 
 @ApiBearerAuth()
 @Roles(RoleEnum.admin)
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(AuthGuard('jwt'), ActiveGuard, RolesGuard)
 @ApiTags('Users')
 @Controller({
   path: 'users',
@@ -56,7 +58,6 @@ export class UsersController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createProfileDto: CreateUserDto): Promise<User> {
-    console.log('CreateUserDto:', createProfileDto);
     return this.usersService.create(createProfileDto);
   }
 
@@ -103,7 +104,9 @@ export class UsersController {
     type: String,
     required: true,
   })
-  findOne(@Param('id') id: User['id']): Promise<NullableType<User>> {
+  findOne(
+    @Param('id', UserIdPipe) id: User['id'],
+  ): Promise<NullableType<User>> {
     return this.usersService.findById(id);
   }
 
@@ -121,7 +124,7 @@ export class UsersController {
     required: true,
   })
   update(
-    @Param('id') id: User['id'],
+    @Param('id', UserIdPipe) id: User['id'],
     @Body() updateProfileDto: UpdateUserDto,
   ): Promise<User | null> {
     return this.usersService.update(id, updateProfileDto);
@@ -134,7 +137,7 @@ export class UsersController {
     required: true,
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: User['id']): Promise<void> {
+  remove(@Param('id', UserIdPipe) id: User['id']): Promise<void> {
     return this.usersService.remove(id);
   }
 
@@ -145,12 +148,10 @@ export class UsersController {
     required: true,
   })
   @HttpCode(HttpStatus.OK)
-  async issueTempPassword(@Param('id') id: User['id']): Promise<{ tempPassword: string }> {
+  async issueTempPassword(
+    @Param('id', UserIdPipe) id: User['id'],
+  ): Promise<{ tempPassword: string }> {
     const tempPassword = await this.usersService.issueTempPassword(id);
     return { tempPassword };
   }
-
 }
-
-
-

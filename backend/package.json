@@ -40,12 +40,13 @@
     "start:swc": "nest start -b swc -w",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" create-admin.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "env-cmd -- jest --config ./test/jest-e2e.json",
+    "test:integration": "jest --config ./test/jest-integration.json --runInBand",
     "test:generators:relational": "bash test/generators/run-static.sh relational",
     "test:generators:document": "bash test/generators/run-static.sh document",
     "test:e2e:generators:relational:docker": "bash test/generators/run-crud-relational.sh",
@@ -53,12 +54,15 @@
     "test:e2e:document:docker": "docker compose -f docker-compose.document.test.yaml --env-file env-example-document -p tests up -d --build && docker compose -f docker-compose.document.test.yaml -p tests exec api /opt/wait-for-it.sh -t 0 localhost:3001 -- npm run test:e2e -- --watchAll --runInBand && docker compose -f docker-compose.document.test.yaml -p tests down && docker compose -p tests rm -svf",
     "test:e2e:relational:docker": "docker compose -f docker-compose.relational.test.yaml --env-file env-example-relational -p tests up -d --build && docker compose -f docker-compose.relational.test.yaml -p tests exec api /opt/wait-for-it.sh -t 0 localhost:3001 -- npm run test:e2e -- --watchAll --runInBand && docker compose -f docker-compose.relational.test.yaml -p tests down && docker compose -p tests rm -svf",
     "prepare": "is-ci || husky",
-    "release": "release-it"
+    "release": "release-it",
+    "typecheck": "tsc --noEmit --incremental false && tsc --project tsconfig.tools.json",
+    "check": "npm run lint && npm run typecheck && npm test -- --runInBand && npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1011.0",
     "@aws-sdk/s3-request-presigner": "3.1011.0",
     "@google/generative-ai": "^0.24.1",
+    "@keyv/redis": "^5.1.6",
     "@nestjs/cache-manager": "^12.0.0",
     "@nestjs/common": "11.1.18",
     "@nestjs/config": "4.0.3",
@@ -79,14 +83,14 @@
     "apple-signin-auth": "2.0.0",
     "bcryptjs": "3.0.3",
     "cache-manager": "^7.2.9",
-    "cache-manager-redis-yet": "^5.1.5",
     "class-transformer": "0.5.1",
-    "class-validator": "0.15.1",
+    "class-validator": "0.14.4",
     "dotenv": "17.3.1",
     "google-auth-library": "10.6.2",
     "handlebars": "4.7.9",
     "helmet": "^8.3.0",
     "ioredis": "^5.11.1",
+    "keyv": "^5.6.0",
     "mongoose": "9.4.1",
     "mongoose-autopopulate": "^1.2.1",
     "ms": "2.1.3",
@@ -164,10 +168,13 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/../test/unit/setup.ts"
+    ]
   },
   "engines": {
-    "node": ">=16.0.0",
+    "node": "^20.19.0 || ^22.13.0 || >=24",
     "npm": ">=8.0.0"
   },
   "release-it": {

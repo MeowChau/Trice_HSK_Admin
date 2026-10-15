@@ -1,0 +1,14 @@
+.env
+.env.??????
+backups/
+transfers/
+workbook-hsk1/
+workbook-hsk1-before-checksum-*/
+cloudflare.env
+.ci/
+ci/.bundle/
+ci/__pycache__/
+ci/tests/__pycache__/
+.source-updates/
+.source-update.lock
+.source-update-version

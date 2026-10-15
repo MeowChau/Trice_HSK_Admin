@@ -2,3 +2,13 @@
 /.data
 /dist
 /files
+.env
+.env.*
+.git
+.claude
+coverage
+.npm-cache
+.integration-tools
+data
+HSK-3.0_data
+Anki-xiehanzi_data

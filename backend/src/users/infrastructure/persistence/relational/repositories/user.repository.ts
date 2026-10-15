@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { StatusEnum } from '../../../../../statuses/statuses.enum';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { FindOptionsWhere, Repository, In } from 'typeorm';
@@ -18,11 +23,44 @@ export class UsersRelationalRepository implements UserRepository {
   ) {}
 
   async create(data: User): Promise<User> {
-    const persistenceModel = UserMapper.toPersistence(data);
-    const newEntity = await this.usersRepository.save(
-      this.usersRepository.create(persistenceModel),
-    );
-    return UserMapper.toDomain(newEntity);
+    return this.usersRepository.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(UserEntity);
+      const prepared = await this.assignStudentCode(repository, data);
+      const newEntity = await repository.save(
+        repository.create(UserMapper.toPersistence(prepared)),
+      );
+      return UserMapper.toDomain(newEntity);
+    });
+  }
+
+  private async assignStudentCode(
+    repository: Repository<UserEntity>,
+    data: User,
+  ): Promise<User> {
+    if (!data.studentCode && Number(data.status?.id) !== StatusEnum.active)
+      return data;
+    // All allocations and explicit assignments use the same transaction-scoped lock.
+    await repository.query('SELECT pg_advisory_xact_lock($1)', [839141]);
+    if (data.studentCode) {
+      const duplicate = await repository.findOne({
+        where: { studentCode: data.studentCode },
+        withDeleted: true,
+      });
+      if (duplicate && String(duplicate.id) !== String(data.id)) {
+        throw new ConflictException('Student code already exists');
+      }
+      return data;
+    }
+    const result = await repository
+      .createQueryBuilder('user')
+      .withDeleted()
+      .select('MAX(user.studentCode)', 'max')
+      .getRawOne<{ max: number | string | null }>();
+    const studentCode = Number(result?.max ?? 0) + 1;
+    if (!Number.isSafeInteger(studentCode) || studentCode > 2147483647) {
+      throw new ConflictException('Student code range exhausted');
+    }
+    return { ...data, studentCode };
   }
 
   async findManyWithPagination({
@@ -46,34 +84,34 @@ export class UsersRelationalRepository implements UserRepository {
         id: In(filterOptions.roles.map((role) => Number(role.id))),
       };
     }
-    
-    if (filterOptions?.currentHskLevel !== undefined && filterOptions?.currentHskLevel !== null) {
+
+    if (
+      filterOptions?.currentHskLevel !== undefined &&
+      filterOptions?.currentHskLevel !== null
+    ) {
       where.currentHskLevel = filterOptions.currentHskLevel;
     }
 
-    if ((filterOptions as any)?.position) {
-      where.position = (filterOptions as any).position;
+    if (filterOptions?.position) {
+      where.position = filterOptions.position;
     }
 
     const entities = await this.usersRepository.find({
       skip: (paginationOptions.page - 1) * paginationOptions.limit,
       take: paginationOptions.limit,
       where: where,
-      order: sortOptions?.reduce(
-          (accumulator, sort) => {
-            if (sort.orderBy === 'status' || sort.orderBy === 'role') {
-              return {
-                ...accumulator,
-                [sort.orderBy]: { id: sort.order },
-              };
-            }
-            return {
-              ...accumulator,
-              [sort.orderBy]: sort.order,
-            };
-          },
-          {},
-        ),
+      order: sortOptions?.reduce((accumulator, sort) => {
+        if (sort.orderBy === 'status' || sort.orderBy === 'role') {
+          return {
+            ...accumulator,
+            [sort.orderBy]: { id: sort.order },
+          };
+        }
+        return {
+          ...accumulator,
+          [sort.orderBy]: sort.order,
+        };
+      }, {}),
       withDeleted: true,
     });
 
@@ -100,12 +138,18 @@ export class UsersRelationalRepository implements UserRepository {
     if (!email) return null;
 
     const entity = await this.usersRepository.findOne({
-      where: [
-        { email: email.toLowerCase() },
-        { username: email },
-      ],
+      where: { email: email.toLowerCase() },
     });
 
+    return entity ? UserMapper.toDomain(entity) : null;
+  }
+
+  async findByLogin(login: string): Promise<NullableType<User>> {
+    const userByEmail = await this.findByEmail(login);
+    if (userByEmail) return userByEmail;
+    const entity = await this.usersRepository.findOne({
+      where: { username: login },
+    });
     return entity ? UserMapper.toDomain(entity) : null;
   }
 
@@ -126,39 +170,38 @@ export class UsersRelationalRepository implements UserRepository {
   }
 
   async update(id: User['id'], payload: Partial<User>): Promise<User> {
-    const entity = await this.usersRepository.findOne({
-      where: { id: Number(id) },
+    return this.usersRepository.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(UserEntity);
+      const entity = await repository.findOne({
+        where: { id: Number(id) },
+        lock: { mode: 'pessimistic_write', tables: ['user'] },
+      });
+      if (!entity) throw new NotFoundException('User not found');
+      const cleanPayload = Object.fromEntries(
+        Object.entries(payload).filter(
+          ([key, value]) => key !== 'id' && value !== undefined,
+        ),
+      );
+      const merged = {
+        ...UserMapper.toDomain(entity),
+        ...cleanPayload,
+      };
+      const needsStudentCode =
+        (!merged.studentCode &&
+          Number(merged.status?.id) === StatusEnum.active) ||
+        (payload.studentCode !== undefined &&
+          payload.studentCode !== entity.studentCode);
+      const prepared = needsStudentCode
+        ? await this.assignStudentCode(repository, merged)
+        : merged;
+      const updatedEntity = await repository.save(
+        repository.create(UserMapper.toPersistence(prepared)),
+      );
+      return UserMapper.toDomain(updatedEntity);
     });
-
-    if (!entity) {
-      throw new Error('User not found');
-    }
-
-    const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(([_, v]) => v !== undefined)
-    );
-
-    const updatedEntity = await this.usersRepository.save(
-      this.usersRepository.create(
-        UserMapper.toPersistence({
-          ...UserMapper.toDomain(entity),
-          ...cleanPayload,
-        }),
-      ),
-    );
-
-    return UserMapper.toDomain(updatedEntity);
   }
 
   async remove(id: User['id']): Promise<void> {
     await this.usersRepository.softDelete(id);
-  }
-
-  async getMaxStudentCode(): Promise<number> {
-    const result = await this.usersRepository
-      .createQueryBuilder('user')
-      .select('MAX(user.studentCode)', 'max')
-      .getRawOne();
-    return result.max ? Number(result.max) : 0;
   }
 }

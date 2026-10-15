@@ -1,33 +1,39 @@
-import { Controller, Post, Put, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Request,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { PracticeSetsService } from './practice-sets.service';
-import { PracticeSetEntity } from './infrastructure/persistence/relational/entities/practice-set.entity';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from '../roles/roles.decorator';
-import { RoleEnum } from '../roles/roles.enum';
-import { RolesGuard } from '../roles/roles.guard';
-import { AuthGuard } from '@nestjs/passport';
+import { CreatePracticeSetDto } from './dto/practice-set.dto';
+import { QuestionLinksDto } from '../utils/dto/question-links.dto';
+import { ContentEditor } from '../roles/content-editor.decorator';
+import type { RequestWithUser } from '../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 
 @ApiTags('Admin Practice Sets')
-@ApiBearerAuth()
-@Roles(RoleEnum.admin, RoleEnum.teacher)
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Controller({
-  path: 'admin/practice-sets',
-  version: '1',
-})
+@ContentEditor()
+@Controller({ path: 'admin/practice-sets', version: '1' })
 export class AdminPracticeSetsController {
   constructor(private readonly practiceSetsService: PracticeSetsService) {}
 
   @Post()
-  create(@Body() createData: Partial<PracticeSetEntity>) {
-    return this.practiceSetsService.create(createData);
+  create(
+    @Body() data: CreatePracticeSetDto,
+    @Request() req: RequestWithUser<JwtPayloadType>,
+  ) {
+    return this.practiceSetsService.create(data, req.user);
   }
 
   @Put(':id/questions')
   setQuestions(
-    @Param('id') id: string,
-    @Body() data: { questions: { questionId: number; order: number }[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: QuestionLinksDto,
   ) {
-    return this.practiceSetsService.setQuestions(+id, data.questions);
+    return this.practiceSetsService.setQuestions(id, data.questions);
   }
 }

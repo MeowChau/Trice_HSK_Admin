@@ -6,10 +6,7 @@ import { QuestionEntity } from './infrastructure/persistence/relational/entities
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([QuestionEntity]),
-    AuditLogsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([QuestionEntity]), AuditLogsModule],
   controllers: [QuestionsController],
   providers: [QuestionsService],
   exports: [QuestionsService, TypeOrmModule],

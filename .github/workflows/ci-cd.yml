@@ -1,0 +1,145 @@
+name: CI and production images
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['backend/**', 'fe_admin/dashboard/**', 'deploy/**', '.github/**']
+  push:
+    branches: [main]
+    paths: ['backend/**', 'fe_admin/dashboard/**', 'deploy/**', '.github/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-production-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    uses: ./.github/workflows/backend-quality.yml
+
+  dashboard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: fe_admin/dashboard
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: backend/.nvmrc
+          cache: npm
+          cache-dependency-path: fe_admin/dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: /api/v1
+          NEXT_TELEMETRY_DISABLED: '1'
+          NODE_OPTIONS: --max-old-space-size=3072
+
+  deployment-tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s deploy/ci/tests -v
+      - run: bash deploy/tests/import-local-data.test.sh
+      - run: bash deploy/tests/media-urls.test.sh
+      - run: bash deploy/tests/workbook-rebuild.test.sh
+      - run: bash deploy/tests/hsk1-exam-deploy.test.sh
+      - name: Verify workbook permissions with separate Linux users
+        run: >-
+          docker run --rm --network none --read-only --memory 256m --user 0:0
+          --tmpfs /tmp:rw,noexec,nosuid,size=64m
+          --volume "$PWD/backend/workbook-hsk1/release:/source:ro"
+          --volume "$PWD/deploy/rebuild-hsk1-workbook.cjs:/operator/rebuild-hsk1-workbook.cjs:ro"
+          --volume "$PWD/deploy/tests/workbook-permissions.test.cjs:/operator/tests/workbook-permissions.test.cjs:ro"
+          --entrypoint node node:24.14.1-alpine /operator/tests/workbook-permissions.test.cjs
+      - run: shellcheck deploy/ci/*.sh deploy/import-local-data.sh deploy/fix-media-urls.sh deploy/rebuild-hsk1-workbook.sh deploy/repair-workbook-checksum.sh deploy/restore-hsk1-questions.sh deploy/replace-hsk1-exam.sh deploy/tests/*.sh
+      - name: Validate Compose configuration
+        run: >-
+          docker compose --env-file deploy/.env.example
+          -f deploy/compose.yaml -f deploy/compose.tunnel.yaml
+          config --no-env-resolution --quiet
+
+  publish:
+    needs: [backend, dashboard, deployment-tools]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Choose registry namespace
+        id: registry
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: printf 'base=ghcr.io/%s\n' "${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - name: Build and publish API
+        id: api
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ./backend
+          file: ./deploy/backend.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.registry.outputs.base }}-api:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+      - name: Build and publish dashboard
+        id: admin
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ./fe_admin/dashboard
+          file: ./deploy/admin.Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: NEXT_PUBLIC_API_URL=/api/v1
+          tags: ${{ steps.registry.outputs.base }}-admin:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,scope=admin,mode=max
+      - name: Prepare the release manifest
+        env:
+          REGISTRY_BASE: ${{ steps.registry.outputs.base }}
+          REVISION: ${{ github.sha }}
+          API_IMAGE: ${{ steps.registry.outputs.base }}-api@${{ steps.api.outputs.digest }}
+          ADMIN_IMAGE: ${{ steps.registry.outputs.base }}-admin@${{ steps.admin.outputs.digest }}
+        run: python3 deploy/ci/make-release.py
+      # This tag moves only after both immutable application images are available.
+      - name: Promote the complete release
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ./deploy/ci/.bundle
+          file: ./deploy/ci/release.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.registry.outputs.base }}-release:production
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}

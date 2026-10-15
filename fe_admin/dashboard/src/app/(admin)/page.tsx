@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EcommerceMetrics } from "@/components/ecommerce/EcommerceMetrics";
+
 import React from "react";
 import MonthlySalesChart from "@/components/ecommerce/MonthlySalesChart";
 import StatisticsChart from "@/components/ecommerce/StatisticsChart";
@@ -8,8 +8,7 @@ import RecentUsers from "@/components/ecommerce/RecentUsers";
 import { DailyStudyTimeChart } from "@/components/ecommerce/DailyStudyTimeChart";
 
 export const metadata: Metadata = {
-  title:
-    "Tổng quan | Hệ thống quản trị TriceHSK",
+  title: "Tổng quan | Hệ thống quản trị TriceHSK",
   description: "Trang tổng quan hệ thống quản trị TriceHSK",
 };
 
@@ -25,7 +24,9 @@ export default function Ecommerce() {
         <DailyStudyTimeChart />
       </div>
 
-      <div className="col-span-12 space-y-6"><MonthlySalesChart />      </div>
+      <div className="col-span-12 space-y-6">
+        <MonthlySalesChart />{" "}
+      </div>
 
       <div className="col-span-12">
         <RecentUsers />

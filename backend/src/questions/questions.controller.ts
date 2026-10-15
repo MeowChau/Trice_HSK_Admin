@@ -1,97 +1,75 @@
 import {
-  Controller,
-  Post,
   Body,
-  Get,
-  Param,
-  Patch,
+  Controller,
   Delete,
-  Query,
-  UseGuards,
-  Request,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  Request,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { QuestionsService } from './questions.service';
-import { QuestionEntity } from './infrastructure/persistence/relational/entities/question.entity';
-import { QuestionSkillEnum, QuestionTypeEnum } from './infrastructure/persistence/relational/entities/question.enum';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
-import { ActiveGuard } from '../auth/guards/active.guard';
+import { CreateQuestionDto, UpdateQuestionDto } from './dto/question.dto';
+import { QuestionQueryDto } from '../utils/dto/content-query.dto';
+import { ContentEditor } from '../roles/content-editor.decorator';
+import type { RequestWithUser } from '../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 
 @ApiTags('Questions')
-@Controller({
-  path: 'questions',
-  version: '1',
-})
+@Controller({ path: 'questions', version: '1' })
 export class QuestionsController {
   constructor(private readonly questionsService: QuestionsService) {}
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), ActiveGuard)
+  @ContentEditor()
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createData: Partial<QuestionEntity>, @Request() req: any) {
-    return this.questionsService.create(createData, req.user);
-  }
-
-  @ApiOperation({ summary: 'Get list of questions with pagination and filters' })
-  @Get()
-  findAll(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('hskLevel') hskLevel?: number,
-    @Query('skill') skill?: QuestionSkillEnum,
-    @Query('type') type?: QuestionTypeEnum,
-    @Query('difficulty') difficulty?: number,
-    @Query('isGameQuestion') isGameQuestion?: string,
-    @Query('search') search?: string,
+  create(
+    @Body() data: CreateQuestionDto,
+    @Request() req: RequestWithUser<JwtPayloadType>,
   ) {
-    return this.questionsService.findWithPagination({
-      page: page ? Number(page) : 1,
-      limit: limit ? Number(limit) : 10,
-      hskLevel: hskLevel ? Number(hskLevel) : undefined,
-      skill,
-      type,
-      difficulty: difficulty ? Number(difficulty) : undefined,
-      isGameQuestion:
-        isGameQuestion === 'true'
-          ? true
-          : isGameQuestion === 'false'
-            ? false
-            : undefined,
-      search,
-    });
+    return this.questionsService.create(data, req.user);
   }
 
-  @ApiOperation({ summary: 'Get statistics summary of questions' })
+  @ContentEditor()
+  @Get()
+  findAll(@Query() query: QuestionQueryDto) {
+    return this.questionsService.findWithPagination(query);
+  }
+
+  @ContentEditor()
   @Get('summary')
   getSummary() {
     return this.questionsService.getSummary();
   }
 
-  @ApiOperation({ summary: 'Get question details by ID' })
+  @ContentEditor()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.questionsService.findOne(Number(id));
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.questionsService.findOne(id);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), ActiveGuard)
+  @ContentEditor()
   @Patch(':id')
   update(
-    @Param('id') id: string,
-    @Body() updateData: Partial<QuestionEntity>,
-    @Request() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: UpdateQuestionDto,
+    @Request() req: RequestWithUser<JwtPayloadType>,
   ) {
-    return this.questionsService.update(Number(id), updateData, req.user);
+    return this.questionsService.update(id, data, req.user);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), ActiveGuard)
+  @ContentEditor()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string, @Request() req: any) {
-    return this.questionsService.remove(Number(id), req.user);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: RequestWithUser<JwtPayloadType>,
+  ) {
+    return this.questionsService.remove(id, req.user);
   }
 }

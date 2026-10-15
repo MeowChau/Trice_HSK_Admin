@@ -1,14 +1,24 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLogEntity } from './infrastructure/persistence/relational/entities/audit-log.entity';
 
 @Injectable()
 export class AuditLogsService {
+  private readonly logger = new Logger(AuditLogsService.name);
   constructor(
     @InjectRepository(AuditLogEntity)
     private readonly auditLogRepository: Repository<AuditLogEntity>,
   ) {}
+
+  record(data: Parameters<AuditLogsService['createLog']>[0]): void {
+    void this.createLog(data).catch((error: unknown) => {
+      this.logger.error(
+        'Failed to record audit log',
+        error instanceof Error ? error.stack : String(error),
+      );
+    });
+  }
 
   async createLog(data: {
     userId?: number | null;
@@ -19,8 +29,8 @@ export class AuditLogsService {
     entityType: string;
     entityId: string;
     summary: string;
-    oldData?: Record<string, any> | null;
-    newData?: Record<string, any> | null;
+    oldData?: object | null;
+    newData?: object | null;
     changedFields?: string[] | null;
     ipAddress?: string | null;
     userAgent?: string | null;
@@ -34,8 +44,8 @@ export class AuditLogsService {
       entityType: data.entityType,
       entityId: String(data.entityId),
       summary: data.summary,
-      oldData: data.oldData || null,
-      newData: data.newData || null,
+      oldData: data.oldData ? { ...data.oldData } : null,
+      newData: data.newData ? { ...data.newData } : null,
       changedFields: data.changedFields || null,
       ipAddress: data.ipAddress || null,
       userAgent: data.userAgent || null,

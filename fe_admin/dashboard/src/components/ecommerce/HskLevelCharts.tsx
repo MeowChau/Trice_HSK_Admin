@@ -13,7 +13,7 @@ export const HskLevelCharts = () => {
   useEffect(() => {
     const fetchHskDistribution = async () => {
       try {
-        const res = await apiFetch('analytics/hsk-distribution');
+        const res = await apiFetch("analytics/hsk-distribution");
         if (res.ok) {
           const data = await res.json();
           if (data.currentHsk && data.targetHsk) {
@@ -30,12 +30,31 @@ export const HskLevelCharts = () => {
 
   const getOptions = (title: string): ApexOptions => ({
     chart: {
+      id: title,
       type: "pie",
       fontFamily: "Outfit, sans-serif",
     },
-    labels: ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6", "HSK 7", "HSK 8", "HSK 9"],
+    labels: [
+      "HSK 1",
+      "HSK 2",
+      "HSK 3",
+      "HSK 4",
+      "HSK 5",
+      "HSK 6",
+      "HSK 7",
+      "HSK 8",
+      "HSK 9",
+    ],
     colors: [
-      "#465FFF", "#9CB9FF", "#FF7F5C", "#FFD700", "#FF69B4", "#8A2BE2", "#20B2AA", "#FFA07A", "#778899"
+      "#465FFF",
+      "#9CB9FF",
+      "#FF7F5C",
+      "#FFD700",
+      "#FF69B4",
+      "#8A2BE2",
+      "#20B2AA",
+      "#FFA07A",
+      "#778899",
     ],
     legend: {
       position: "bottom",
@@ -45,15 +64,15 @@ export const HskLevelCharts = () => {
       enabled: true,
       formatter: function (val, opts) {
         return opts.w.config.series[opts.seriesIndex];
-      }
+      },
     },
     tooltip: {
       y: {
         formatter: function (val) {
           return val + " người";
-        }
-      }
-    }
+        },
+      },
+    },
   });
 
   return (
@@ -62,13 +81,25 @@ export const HskLevelCharts = () => {
         <h3 className="w-full text-center text-lg font-semibold text-gray-800 dark:text-white/90 mb-4">
           Trình độ hiện tại
         </h3>
-        <Chart options={getOptions("")} series={currentHsk} type="pie" height={320} width={"100%"} />
+        <Chart
+          options={getOptions("")}
+          series={currentHsk}
+          type="pie"
+          height={320}
+          width={"100%"}
+        />
       </div>
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 flex flex-col items-center">
         <h3 className="w-full text-center text-lg font-semibold text-gray-800 dark:text-white/90 mb-4">
           Trình độ mong muốn
         </h3>
-        <Chart options={getOptions("")} series={targetHsk} type="pie" height={320} width={"100%"} />
+        <Chart
+          options={getOptions("")}
+          series={targetHsk}
+          type="pie"
+          height={320}
+          width={"100%"}
+        />
       </div>
     </>
   );

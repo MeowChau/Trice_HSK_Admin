@@ -16,10 +16,15 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ActiveGuard } from '../auth/guards/active.guard';
+import { Roles } from '../roles/roles.decorator';
+import { RolesGuard } from '../roles/roles.guard';
+import { RoleEnum } from '../roles/roles.enum';
+import { AuditLogQueryDto } from '../utils/dto/content-query.dto';
 
 @ApiTags('AuditLogs')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), ActiveGuard)
+@Roles(RoleEnum.admin)
+@UseGuards(AuthGuard('jwt'), ActiveGuard, RolesGuard)
 @Controller({
   path: 'audit-logs',
   version: '1',
@@ -27,7 +32,9 @@ import { ActiveGuard } from '../auth/guards/active.guard';
 export class AuditLogsController {
   constructor(private readonly auditLogsService: AuditLogsService) {}
 
-  @ApiOperation({ summary: 'Get audit logs list with search, filter, and pagination' })
+  @ApiOperation({
+    summary: 'Get audit logs list with search, filter, and pagination',
+  })
   @ApiOkResponse({ description: 'List of audit logs' })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'entityType', required: false, type: String })
@@ -37,22 +44,8 @@ export class AuditLogsController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @Get()
   @HttpCode(HttpStatus.OK)
-  getLogs(
-    @Query('search') search?: string,
-    @Query('entityType') entityType?: string,
-    @Query('action') action?: string,
-    @Query('userId') userId?: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.auditLogsService.getLogs({
-      search,
-      entityType,
-      action,
-      userId: userId ? Number(userId) : undefined,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+  getLogs(@Query() query: AuditLogQueryDto) {
+    return this.auditLogsService.getLogs(query);
   }
 
   @ApiOperation({ summary: 'Get summary statistics for audit logs' })

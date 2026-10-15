@@ -21,6 +21,12 @@ import { EntityRelationalHelper } from '../../../../../utils/relational-entity-h
   name: 'user',
 })
 export class UserEntity extends EntityRelationalHelper {
+  @Column({
+    nullable: true,
+    type: Date,
+  })
+  emailVerifiedAt?: Date | null;
+
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -65,7 +71,6 @@ export class UserEntity extends EntityRelationalHelper {
   avatarFrame: string | null;
 
   @Index()
-
   @OneToOne(() => FileEntity, {
     eager: true,
   })
@@ -91,6 +96,7 @@ export class UserEntity extends EntityRelationalHelper {
   @Column({ type: Number, nullable: true })
   dailyStudyTime: number | null;
 
+  @Index('UQ_user_student_code', { unique: true })
   @Column({ type: Number, nullable: true })
   studentCode: number | null;
 

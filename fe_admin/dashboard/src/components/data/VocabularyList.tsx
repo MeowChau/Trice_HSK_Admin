@@ -1,10 +1,13 @@
 "use client";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { HSK_COLORS } from "@/constants/hsk";
+import { errorMessage } from "@/lib/error-message";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, readApiError } from "@/lib/api";
-import Badge from "../ui/badge/Badge";
+
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
 import {
@@ -14,15 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { PlusIcon, TrashBinIcon, PencilIcon, FolderIcon } from "@/icons";
 import {
-  PlusIcon,
-  TrashBinIcon,
-  PencilIcon,
-  FolderIcon,
-  CheckCircleIcon,
-} from "@/icons";
-import {
-  TEXTBOOK_LESSONS,
   getLessonsByHsk,
   getLessonByTopicKey,
 } from "@/constants/textbookLessons";
@@ -37,20 +33,9 @@ export interface VocabItem {
   createdAt?: string;
 }
 
-const HSK_COLORS: Record<number, { bg: string; text: string; border: string }> = {
-  1: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-200 dark:border-emerald-800" },
-  2: { bg: "bg-teal-50 dark:bg-teal-500/10", text: "text-teal-600 dark:text-teal-400", border: "border-teal-200 dark:border-teal-800" },
-  3: { bg: "bg-sky-50 dark:bg-sky-500/10", text: "text-sky-600 dark:text-sky-400", border: "border-sky-200 dark:border-sky-800" },
-  4: { bg: "bg-indigo-50 dark:bg-indigo-500/10", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-200 dark:border-indigo-800" },
-  5: { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", border: "border-amber-200 dark:border-amber-800" },
-  6: { bg: "bg-rose-50 dark:bg-rose-500/10", text: "text-rose-600 dark:text-rose-400", border: "border-rose-200 dark:border-rose-800" },
-  7: { bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", border: "border-purple-200 dark:border-purple-800" },
-  8: { bg: "bg-fuchsia-50 dark:bg-fuchsia-500/10", text: "text-fuchsia-600 dark:text-fuchsia-400", border: "border-fuchsia-200 dark:border-fuchsia-800" },
-  9: { bg: "bg-violet-50 dark:bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", border: "border-violet-200 dark:border-violet-800" },
-};
-
 export default function VocabularyList() {
-  const router = useRouter();
+  const requests = useLatestRequest();
+
   const searchParams = useSearchParams();
 
   // URL state
@@ -59,10 +44,10 @@ export default function VocabularyList() {
 
   // Filters
   const [selectedHsk, setSelectedHsk] = useState<number>(
-    paramHsk ? Number(paramHsk) : 1
+    paramHsk ? Number(paramHsk) : 1,
   );
   const [selectedTopic, setSelectedTopic] = useState<string>(
-    paramTopic || "ALL"
+    paramTopic || "ALL",
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -99,7 +84,7 @@ export default function VocabularyList() {
       setPage(1);
     }, 350);
     return () => clearTimeout(handler);
-  }, [searchTerm]);
+  }, [requests, searchTerm]);
 
   // Lessons list for the currently selected HSK
   const currentHskLessons = useMemo(() => {
@@ -113,6 +98,7 @@ export default function VocabularyList() {
 
   // Fetch vocabulary list
   const fetchVocabularies = useCallback(async () => {
+    const request = requests.start();
     setIsLoading(true);
     setErrorMsg(null);
     try {
@@ -124,20 +110,24 @@ export default function VocabularyList() {
         query += `&search=${encodeURIComponent(debouncedSearch.trim())}`;
       }
 
-      const res = await apiFetch(query);
+      const res = await apiFetch(query, { signal: request.signal });
       if (!res.ok) {
         throw new Error(await readApiError(res));
       }
       const json = await res.json();
+      if (!request.isCurrent()) return;
       setVocabList(json.data || []);
       setTotalCount(json.total || 0);
       setTotalPages(json.totalPages || 1);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Không thể tải danh sách từ vựng.");
+    } catch (err) {
+      if (!request.isCurrent()) return;
+      setErrorMsg(errorMessage(err, "") || "Không thể tải danh sách từ vựng.");
     } finally {
-      setIsLoading(false);
+      if (request.isCurrent()) {
+        setIsLoading(false);
+      }
     }
-  }, [page, limit, selectedHsk, selectedTopic, debouncedSearch]);
+  }, [requests, page, limit, selectedHsk, selectedTopic, debouncedSearch]);
 
   useEffect(() => {
     fetchVocabularies();
@@ -190,8 +180,8 @@ export default function VocabularyList() {
       setSelectedIds([]);
       setBatchTargetTopic("");
       await fetchVocabularies();
-    } catch (err: any) {
-      alert(err.message || "Không thể đẩy từ vựng vào bài học.");
+    } catch (err) {
+      alert(errorMessage(err, "") || "Không thể đẩy từ vựng vào bài học.");
     } finally {
       setIsBatchAssigning(false);
     }
@@ -205,7 +195,11 @@ export default function VocabularyList() {
     setFormPinyin("");
     setFormMeaning("");
     setFormHskLevel(selectedHsk);
-    setFormTopic(selectedTopic !== "ALL" && selectedTopic !== "UNASSIGNED" ? selectedTopic : "");
+    setFormTopic(
+      selectedTopic !== "ALL" && selectedTopic !== "UNASSIGNED"
+        ? selectedTopic
+        : "",
+    );
     setIsModalOpen(true);
   };
 
@@ -263,8 +257,8 @@ export default function VocabularyList() {
       }
       setIsModalOpen(false);
       await fetchVocabularies();
-    } catch (err: any) {
-      alert(err.message || "Lỗi lưu từ vựng");
+    } catch (err) {
+      alert(errorMessage(err, "") || "Lỗi lưu từ vựng");
     } finally {
       setIsSaving(false);
     }
@@ -277,12 +271,13 @@ export default function VocabularyList() {
       const res = await apiFetch(`vocabulary/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(await readApiError(res));
       await fetchVocabularies();
-    } catch (err: any) {
-      alert(err.message || "Không thể xóa từ vựng.");
+    } catch (err) {
+      alert(errorMessage(err, "") || "Không thể xóa từ vựng.");
     }
   };
 
-  const isAllSelected = vocabList.length > 0 && selectedIds.length === vocabList.length;
+  const isAllSelected =
+    vocabList.length > 0 && selectedIds.length === vocabList.length;
 
   return (
     <div className="space-y-6">
@@ -298,13 +293,18 @@ export default function VocabularyList() {
             </h1>
           </div>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Tra cứu từ vựng theo từng cấp độ HSK 1 - 9 và liên kết bám sát theo từng bài học trong sách giáo trình & bài tập.
+            Tra cứu từ vựng theo từng cấp độ HSK 1 - 9 và liên kết bám sát theo
+            từng bài học trong sách giáo trình & bài tập.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link href="/data/topics">
-            <Button variant="outline" size="sm" startIcon={<FolderIcon className="w-4 h-4" />}>
+            <Button
+              variant="outline"
+              size="sm"
+              startIcon={<FolderIcon className="w-4 h-4" />}
+            >
               Danh mục bài học
             </Button>
           </Link>
@@ -326,7 +326,7 @@ export default function VocabularyList() {
           </span>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => {
             const isSelected = selectedHsk === lvl;
-            const style = HSK_COLORS[lvl] || HSK_COLORS[1];
+
             return (
               <button
                 key={lvl}
@@ -362,7 +362,12 @@ export default function VocabularyList() {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
 
@@ -377,9 +382,15 @@ export default function VocabularyList() {
                 }}
                 className="w-full h-11 px-3.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
               >
-                <option value="ALL">📚 Tất cả bài học (HSK {selectedHsk})</option>
-                <option value="UNASSIGNED">⚪ Từ vựng chưa gán bài học (Kho chung)</option>
-                <optgroup label={`Danh sách bài học giáo trình HSK ${selectedHsk}`}>
+                <option value="ALL">
+                  📚 Tất cả bài học (HSK {selectedHsk})
+                </option>
+                <option value="UNASSIGNED">
+                  ⚪ Từ vựng chưa gán bài học (Kho chung)
+                </option>
+                <optgroup
+                  label={`Danh sách bài học giáo trình HSK ${selectedHsk}`}
+                >
                   {currentHskLessons.map((l) => (
                     <option key={l.topicKey} value={l.topicKey}>
                       {l.titleVi} ({l.titleCn})
@@ -415,7 +426,9 @@ export default function VocabularyList() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Đẩy vào bài học:</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Đẩy vào bài học:
+              </span>
               <select
                 value={batchTargetTopic}
                 onChange={(e) => setBatchTargetTopic(e.target.value)}
@@ -483,19 +496,34 @@ export default function VocabularyList() {
                     className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500"
                   />
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Chữ Hán & Phiên âm
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Ý nghĩa tiếng Việt
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Cấp độ
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Bài học giáo trình bám sát
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Thao tác
                 </TableCell>
               </TableRow>
@@ -503,16 +531,24 @@ export default function VocabularyList() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-400 dark:text-gray-500" {...({ colSpan: 6 } as any)}>
+                  <TableCell
+                    className="px-5 py-12 text-center text-gray-400 dark:text-gray-500"
+                    colSpan={6}
+                  >
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">Đang tải danh sách từ vựng...</span>
+                      <span className="text-sm">
+                        Đang tải danh sách từ vựng...
+                      </span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : vocabList.length === 0 ? (
                 <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-400 dark:text-gray-500" {...({ colSpan: 6 } as any)}>
+                  <TableCell
+                    className="px-5 py-12 text-center text-gray-400 dark:text-gray-500"
+                    colSpan={6}
+                  >
                     <div className="flex flex-col items-center justify-center gap-2">
                       <span className="text-3xl">📭</span>
                       <p className="text-base font-medium text-gray-600 dark:text-gray-400">
@@ -528,7 +564,9 @@ export default function VocabularyList() {
                 vocabList.map((v) => {
                   const isChecked = selectedIds.includes(v.id);
                   const hskStyle = HSK_COLORS[v.hskLevel] || HSK_COLORS[1];
-                  const matchedLesson = v.topic ? getLessonByTopicKey(v.topic) : undefined;
+                  const matchedLesson = v.topic
+                    ? getLessonByTopicKey(v.topic)
+                    : undefined;
 
                   return (
                     <TableRow
@@ -573,7 +611,9 @@ export default function VocabularyList() {
 
                       {/* HSK Level */}
                       <TableCell className="px-5 py-3.5 text-center whitespace-nowrap">
-                        <span className={`inline-flex items-center justify-center font-bold text-xs px-2.5 py-0.5 rounded border ${hskStyle.bg} ${hskStyle.text} ${hskStyle.border}`}>
+                        <span
+                          className={`inline-flex items-center justify-center font-bold text-xs px-2.5 py-0.5 rounded border ${hskStyle.bg} ${hskStyle.text} ${hskStyle.border}`}
+                        >
                           HSK {v.hskLevel}
                         </span>
                       </TableCell>
@@ -582,10 +622,14 @@ export default function VocabularyList() {
                       <TableCell className="px-5 py-3.5 whitespace-nowrap">
                         {v.topic ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-base">{matchedLesson?.icon || "📖"}</span>
+                            <span className="text-base">
+                              {matchedLesson?.icon || "📖"}
+                            </span>
                             <div>
                               <span className="text-xs font-semibold text-gray-900 dark:text-white block">
-                                {matchedLesson ? matchedLesson.titleVi : v.topic}
+                                {matchedLesson
+                                  ? matchedLesson.titleVi
+                                  : v.topic}
                               </span>
                               {matchedLesson && (
                                 <span className="text-[10px] font-mono text-gray-400">
@@ -632,7 +676,8 @@ export default function VocabularyList() {
         {totalPages > 1 && (
           <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <span className="text-xs text-gray-500">
-              Hiển thị {(page - 1) * limit + 1} - {Math.min(page * limit, totalCount)} trong {totalCount} từ vựng
+              Hiển thị {(page - 1) * limit + 1} -{" "}
+              {Math.min(page * limit, totalCount)} trong {totalCount} từ vựng
             </span>
 
             <div className="flex items-center gap-1.5">
@@ -669,7 +714,9 @@ export default function VocabularyList() {
         <form onSubmit={handleSaveVocab} className="space-y-4">
           <div className="pb-3 border-b border-gray-100 dark:border-gray-800">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              {modalMode === "CREATE" ? "Thêm từ vựng mới" : "Chỉnh sửa từ vựng"}
+              {modalMode === "CREATE"
+                ? "Thêm từ vựng mới"
+                : "Chỉnh sửa từ vựng"}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Quản lý chi tiết từ vựng và bài học giáo trình liên kết
@@ -748,7 +795,9 @@ export default function VocabularyList() {
                   onChange={(e) => setFormTopic(e.target.value)}
                   className="w-full h-10 px-3.5 text-sm bg-white border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 >
-                  <option value="">⚪ Chưa gán (Kho chung HSK {formHskLevel})</option>
+                  <option value="">
+                    ⚪ Chưa gán (Kho chung HSK {formHskLevel})
+                  </option>
                   {formHskLessons.map((l) => (
                     <option key={l.topicKey} value={l.topicKey}>
                       {l.titleVi} ({l.titleCn})
@@ -769,7 +818,11 @@ export default function VocabularyList() {
               Hủy
             </Button>
             <Button type="submit" size="sm" disabled={isSaving}>
-              {isSaving ? "Đang lưu..." : modalMode === "CREATE" ? "Tạo từ vựng" : "Lưu thay đổi"}
+              {isSaving
+                ? "Đang lưu..."
+                : modalMode === "CREATE"
+                  ? "Tạo từ vựng"
+                  : "Lưu thay đổi"}
             </Button>
           </div>
         </form>

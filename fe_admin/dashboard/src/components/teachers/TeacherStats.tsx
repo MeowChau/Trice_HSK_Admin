@@ -1,10 +1,14 @@
 "use client";
+import { useCallback } from "react";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { errorMessage } from "@/lib/error-message";
 
 import React, { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ApexOptions } from "apexcharts";
 import { apiFetch, API_BASE_URL, readApiError } from "@/lib/api";
+import { resolveFileUrl } from "@/lib/media-url";
 import Badge from "../ui/badge/Badge";
 import {
   Table,
@@ -20,8 +24,6 @@ import {
   ShootingStarIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  PieChartIcon,
-  GridIcon,
 } from "@/icons";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -76,6 +78,7 @@ interface TeacherStatsData {
 }
 
 export default function TeacherStats() {
+  const requests = useLatestRequest();
   const [stats, setStats] = useState<TeacherStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -85,31 +88,41 @@ export default function TeacherStats() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPosition, setFilterPosition] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [sortBy, setSortBy] = useState<"questions_desc" | "exams_desc" | "name_asc">("questions_desc");
+  const [sortBy, setSortBy] = useState<
+    "questions_desc" | "exams_desc" | "name_asc"
+  >("questions_desc");
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
+    const request = requests.start();
     try {
       setFetchError(null);
-      const res = await apiFetch("analytics/teacher-stats", { cache: "no-store" });
+      const res = await apiFetch("analytics/teacher-stats", {
+        signal: request.signal,
+        cache: "no-store",
+      });
       if (res.ok) {
         const data = await res.json();
+        if (!request.isCurrent()) return;
         setStats(data);
       } else {
         const errMsg = await readApiError(res);
         setFetchError(errMsg || `Lỗi HTTP ${res.status}`);
       }
-    } catch (err: any) {
+    } catch (err) {
+      if (!request.isCurrent()) return;
       console.error("Failed to load teacher stats:", err);
-      setFetchError(err?.message || "Không thể kết nối đến máy chủ");
+      setFetchError(errorMessage(err, "") || "Không thể kết nối đến máy chủ");
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (request.isCurrent()) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
-  };
+  }, [requests]);
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -117,12 +130,7 @@ export default function TeacherStats() {
   };
 
   const getAvatarUrl = (photo?: { id: string; path: string } | null) => {
-    if (!photo?.path) return null;
-    let cleanPath = photo.path.replace(/\\/g, "/");
-    if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
-      return cleanPath;
-    }
-    return `${API_BASE_URL}/${cleanPath.replace(/^\/+/, "")}`;
+    return resolveFileUrl(photo?.path, API_BASE_URL);
   };
 
   const formatDate = (dateStr?: string) => {
@@ -150,7 +158,7 @@ export default function TeacherStats() {
       list = list.filter(
         (t) =>
           t.fullName.toLowerCase().includes(term) ||
-          t.email.toLowerCase().includes(term)
+          t.email.toLowerCase().includes(term),
       );
     }
 
@@ -370,7 +378,8 @@ export default function TeacherStats() {
             Thống kê giáo viên
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Tổng quan năng suất, cơ cấu chức vụ và đóng góp học thuật của đội ngũ giảng viên TriceHSK.
+            Tổng quan năng suất, cơ cấu chức vụ và đóng góp học thuật của đội
+            ngũ giảng viên TriceHSK.
           </p>
         </div>
 
@@ -474,7 +483,7 @@ export default function TeacherStats() {
                 ? Math.round(
                     ((stats.overview.activeTeachers || 0) /
                       stats.overview.totalTeachers) *
-                      100
+                      100,
                   )
                 : 0}
               %
@@ -495,7 +504,9 @@ export default function TeacherStats() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {isLoading ? "..." : stats?.overview?.totalQuestionsContributed || 0}
+              {isLoading
+                ? "..."
+                : stats?.overview?.totalQuestionsContributed || 0}
             </span>
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
               câu hỏi
@@ -651,7 +662,9 @@ export default function TeacherStats() {
                 series={[
                   {
                     name: "Số câu hỏi",
-                    data: stats?.skillsAndLevels?.skills?.counts || [0, 0, 0, 0],
+                    data: stats?.skillsAndLevels?.skills?.counts || [
+                      0, 0, 0, 0,
+                    ],
                   },
                 ]}
                 type="bar"
@@ -673,15 +686,18 @@ export default function TeacherStats() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 pt-2">
-            {(stats?.skillsAndLevels?.levels?.labels || [
-              "HSK 1",
-              "HSK 2",
-              "HSK 3",
-              "HSK 4",
-              "HSK 5",
-              "HSK 6",
-            ]).map((lvl, index) => {
-              const count = stats?.skillsAndLevels?.levels?.counts?.[index] || 0;
+            {(
+              stats?.skillsAndLevels?.levels?.labels || [
+                "HSK 1",
+                "HSK 2",
+                "HSK 3",
+                "HSK 4",
+                "HSK 5",
+                "HSK 6",
+              ]
+            ).map((lvl, index) => {
+              const count =
+                stats?.skillsAndLevels?.levels?.counts?.[index] || 0;
               const total = stats?.overview?.totalQuestionsContributed || 1;
               const percent = Math.round((count / total) * 100);
 
@@ -704,7 +720,9 @@ export default function TeacherStats() {
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                     <div
                       className="h-full rounded-full bg-brand-500"
-                      style={{ width: `${Math.min(100, Math.max(percent, count > 0 ? 5 : 0))}%` }}
+                      style={{
+                        width: `${Math.min(100, Math.max(percent, count > 0 ? 5 : 0))}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -722,7 +740,8 @@ export default function TeacherStats() {
               Bảng xếp hạng đóng góp giảng viên
             </h3>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Chi tiết hiệu suất và hoạt động biên soạn học thuật của từng giảng viên
+              Chi tiết hiệu suất và hoạt động biên soạn học thuật của từng giảng
+              viên
             </p>
           </div>
 
@@ -764,7 +783,15 @@ export default function TeacherStats() {
             {/* Sort */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (
+                  value === "questions_desc" ||
+                  value === "exams_desc" ||
+                  value === "name_asc"
+                )
+                  setSortBy(value);
+              }}
               className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
             >
               <option value="questions_desc">Nhiều câu hỏi nhất</option>
@@ -837,7 +864,8 @@ export default function TeacherStats() {
                   .charAt(0)
                   .toUpperCase();
                 const rank = index + 1;
-                const hasContributions = teacher.questionsCount > 0 || teacher.examsCount > 0;
+                const hasContributions =
+                  teacher.questionsCount > 0 || teacher.examsCount > 0;
 
                 return (
                   <TableRow key={teacher.id}>
@@ -900,7 +928,9 @@ export default function TeacherStats() {
                     <TableCell className="min-w-[110px] px-4 py-3.5 text-center">
                       <Badge
                         size="sm"
-                        color={teacher.position === "Bậc 2" ? "success" : "info"}
+                        color={
+                          teacher.position === "Bậc 2" ? "success" : "info"
+                        }
                       >
                         {teacher.position || "Bậc 1"}
                       </Badge>

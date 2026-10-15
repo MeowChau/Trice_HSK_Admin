@@ -42,10 +42,10 @@ export class AuditLogEntity extends EntityRelationalHelper {
   summary: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  oldData: Record<string, any> | null;
+  oldData: Record<string, unknown> | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  newData: Record<string, any> | null;
+  newData: Record<string, unknown> | null;
 
   @Column({ type: 'jsonb', nullable: true })
   changedFields: string[] | null;

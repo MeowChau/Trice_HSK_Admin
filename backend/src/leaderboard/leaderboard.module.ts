@@ -6,12 +6,7 @@ import { UserEntity } from '../users/infrastructure/persistence/relational/entit
 import { StudySessionLogEntity } from '../study-sessions/infrastructure/persistence/relational/entities/study-session-log.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      UserEntity,
-      StudySessionLogEntity,
-    ]),
-  ],
+  imports: [TypeOrmModule.forFeature([UserEntity, StudySessionLogEntity])],
   controllers: [LeaderboardController],
   providers: [LeaderboardService],
   exports: [LeaderboardService],

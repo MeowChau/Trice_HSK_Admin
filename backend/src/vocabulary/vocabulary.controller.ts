@@ -1,99 +1,72 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
   Body,
-  Param,
-  Query,
-  ParseIntPipe,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { VocabularyService } from './vocabulary.service';
+import {
+  BatchAssignVocabularyDto,
+  CreateVocabularyDto,
+  UpdateVocabularyDto,
+} from './dto/vocabulary.dto';
+import { VocabularyQueryDto } from '../utils/dto/content-query.dto';
+import { ContentEditor } from '../roles/content-editor.decorator';
 
 @ApiTags('Vocabulary')
-@Controller({
-  path: 'vocabulary',
-  version: '1',
-})
+@Controller({ path: 'vocabulary', version: '1' })
 export class VocabularyController {
   constructor(private readonly vocabularyService: VocabularyService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get list of vocabularies with pagination and filters' })
-  async findMany(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('hskLevel') hskLevel?: number,
-    @Query('topic') topic?: string,
-    @Query('search') search?: string,
-  ) {
-    return this.vocabularyService.findMany({ page, limit, hskLevel, topic, search });
+  findMany(@Query() query: VocabularyQueryDto) {
+    return this.vocabularyService.findMany(query);
   }
 
   @Get('topic-counts')
-  @ApiOperation({ summary: 'Get vocabulary counts per topic' })
-  async getTopicCounts() {
+  getTopicCounts() {
     return this.vocabularyService.getTopicCounts();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a single vocabulary by id' })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.vocabularyService.findOne(id);
   }
 
+  @ContentEditor()
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new vocabulary' })
-  async create(
-    @Body()
-    body: {
-      hanzi: string;
-      pinyin: string;
-      meaning: string;
-      hskLevel: number;
-      topic?: string | null;
-    },
-  ) {
-    return this.vocabularyService.create(body);
+  create(@Body() data: CreateVocabularyDto) {
+    return this.vocabularyService.create(data);
   }
 
+  @ContentEditor()
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a vocabulary' })
-  async update(
+  update(
     @Param('id', ParseIntPipe) id: number,
-    @Body()
-    body: {
-      hanzi?: string;
-      pinyin?: string;
-      meaning?: string;
-      hskLevel?: number;
-      topic?: string | null;
-    },
+    @Body() data: UpdateVocabularyDto,
   ) {
-    return this.vocabularyService.update(id, body);
+    return this.vocabularyService.update(id, data);
   }
 
+  @ContentEditor()
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a vocabulary' })
-  async delete(@Param('id', ParseIntPipe) id: number) {
+  delete(@Param('id', ParseIntPipe) id: number) {
     return this.vocabularyService.delete(id);
   }
 
+  @ContentEditor()
   @Post('batch-assign')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Batch assign vocabularies to a topic' })
-  async batchAssign(
-    @Body()
-    body: {
-      vocabIds: number[];
-      topic: string | null;
-    },
-  ) {
-    return this.vocabularyService.batchAssign(body.vocabIds, body.topic);
+  batchAssign(@Body() data: BatchAssignVocabularyDto) {
+    return this.vocabularyService.batchAssign(data.vocabIds, data.topic);
   }
 }

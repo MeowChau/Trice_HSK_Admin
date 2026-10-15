@@ -33,9 +33,7 @@ function readCookie(name: string): string | null {
   if (!isBrowser()) return null;
 
   const prefix = `${name}=`;
-  const raw = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith(prefix));
+  const raw = document.cookie.split("; ").find((row) => row.startsWith(prefix));
 
   // A JWT is base64url encoded, so it never contains "=" padding, but slicing
   // by prefix length is still safer than splitting on "=".
@@ -70,6 +68,12 @@ export function saveSession(session: Session): void {
   // `middleware.ts` only sees cookies, so the token is mirrored there to keep
   // route protection working.
   document.cookie = `token=${encodeURIComponent(session.token)}; path=/; max-age=${SESSION_COOKIE_MAX_AGE}; samesite=lax`;
+  if (readCookie(TOKEN_KEY) !== session.token) {
+    clearSession();
+    throw new Error(
+      "Không lưu được phiên đăng nhập. Vui lòng cho phép cookie cho website này rồi thử lại.",
+    );
+  }
 }
 
 export function clearSession(): void {
@@ -134,7 +138,11 @@ function withAuthHeaders(init: RequestInit, token: string | null): RequestInit {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  if (init.body && typeof init.body === "string" && !headers.has("Content-Type")) {
+  if (
+    init.body &&
+    typeof init.body === "string" &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -161,8 +169,15 @@ export async function apiFetch(
   if (response.status !== 401) {
     return response;
   }
-
-  const freshToken = await refreshAccessToken();
+  init.signal?.throwIfAborted();
+  // A slower request may receive its 401 after another request has already
+  // refreshed the session. Reuse that token instead of rotating it again.
+  const currentToken = getToken();
+  const freshToken =
+    currentToken && currentToken !== token
+      ? currentToken
+      : await refreshAccessToken();
+  init.signal?.throwIfAborted();
 
   if (!freshToken) {
     clearSession();

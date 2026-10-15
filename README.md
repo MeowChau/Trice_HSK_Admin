@@ -2,6 +2,8 @@
 
 > Hướng dẫn thiết lập hệ thống, khởi chạy môi trường phát triển (Local Development) và tài liệu tích hợp API dành cho đội ngũ phát triển Frontend.
 
+> **Trạng thái API:** Các mục `grammar`, `exam-submissions`, `flashcards` và endpoint dưới `gamification` trong bảng bên dưới là tính năng dự kiến, chưa có controller trong backend hiện tại. Bảng xếp hạng đã triển khai ở `/api/v1/leaderboard/streak`. Dùng Swagger của server và [báo cáo rà soát backend](backend/docs/backend-review.md) để đối chiếu API thực tế.
+
 ---
 
 ## 📑 Mục lục
@@ -160,7 +162,7 @@ Mở trình duyệt và vào đường dẫn:
 ### 3. Cách lấy Token và phân quyền trên Swagger:
 Hầu hết các API cần người dùng đăng nhập đều yêu cầu `Bearer Token`:
 1. Trên Swagger, tìm đến nhóm **Auth** -> chọn `POST /api/v1/auth/email/login`.
-2. Bấm **Try it out** và đăng nhập với tài khoản mẫu (hoặc dùng `POST /api/v1/auth/email/register` để tạo tài khoản mới).
+2. Bấm **Try it out** và đăng nhập với tài khoản đã được tạo bằng cấu hình riêng trong `.env` (hoặc dùng `POST /api/v1/auth/email/register` để tạo tài khoản học viên mới). Không có tài khoản admin mặc định; không commit thông tin đăng nhập lên Git.
 3. Copy chuỗi `token` trong kết quả trả về:
    ```json
    {

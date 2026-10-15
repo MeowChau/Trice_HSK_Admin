@@ -4,6 +4,8 @@ interface InputProps {
   type?: "text" | "number" | "email" | "password" | "date" | "time" | string;
   id?: string;
   name?: string;
+  autoComplete?: React.InputHTMLAttributes<HTMLInputElement>["autoComplete"];
+  required?: boolean;
   placeholder?: string;
   defaultValue?: string | number;
   value?: string | number;
@@ -22,6 +24,8 @@ const Input: FC<InputProps> = ({
   type = "text",
   id,
   name,
+  autoComplete,
+  required,
   placeholder,
   defaultValue,
   value,
@@ -55,6 +59,8 @@ const Input: FC<InputProps> = ({
         type={type}
         id={id}
         name={name}
+        autoComplete={autoComplete}
+        required={required}
         placeholder={placeholder}
         defaultValue={defaultValue}
         value={value}
@@ -73,8 +79,8 @@ const Input: FC<InputProps> = ({
             error
               ? "text-error-500"
               : success
-              ? "text-success-500"
-              : "text-gray-500"
+                ? "text-success-500"
+                : "text-gray-500"
           }`}
         >
           {hint}

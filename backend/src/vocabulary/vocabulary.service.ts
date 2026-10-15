@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike } from 'typeorm';
+import { Repository } from 'typeorm';
 import { VocabularyEntity } from '../offline-games/infrastructure/persistence/relational/entities/vocabulary.entity';
 
 @Injectable()
@@ -24,12 +24,18 @@ export class VocabularyService {
     const qb = this.vocabularyRepository.createQueryBuilder('v');
 
     if (query.hskLevel && !isNaN(Number(query.hskLevel))) {
-      qb.andWhere('v.hskLevel = :hskLevel', { hskLevel: Number(query.hskLevel) });
+      qb.andWhere('v.hskLevel = :hskLevel', {
+        hskLevel: Number(query.hskLevel),
+      });
     }
 
-    if (query.topic !== undefined && query.topic !== null && query.topic !== '') {
+    if (
+      query.topic !== undefined &&
+      query.topic !== null &&
+      query.topic !== ''
+    ) {
       if (query.topic === 'UNASSIGNED') {
-        qb.andWhere('(v.topic IS NULL OR v.topic = \'\')');
+        qb.andWhere("(v.topic IS NULL OR v.topic = '')");
       } else {
         qb.andWhere('v.topic = :topic', { topic: query.topic });
       }
@@ -97,11 +103,15 @@ export class VocabularyService {
     const vocab = await this.findOne(id);
     if (!data) return vocab;
 
-    if (data.hanzi !== undefined) vocab.hanzi = data.hanzi ? data.hanzi.trim() : vocab.hanzi;
-    if (data.pinyin !== undefined) vocab.pinyin = data.pinyin ? data.pinyin.trim() : vocab.pinyin;
-    if (data.meaning !== undefined) vocab.meaning = data.meaning ? data.meaning.trim() : vocab.meaning;
+    if (data.hanzi !== undefined)
+      vocab.hanzi = data.hanzi ? data.hanzi.trim() : vocab.hanzi;
+    if (data.pinyin !== undefined)
+      vocab.pinyin = data.pinyin ? data.pinyin.trim() : vocab.pinyin;
+    if (data.meaning !== undefined)
+      vocab.meaning = data.meaning ? data.meaning.trim() : vocab.meaning;
     if (data.hskLevel !== undefined) vocab.hskLevel = Number(data.hskLevel);
-    if (data.topic !== undefined) vocab.topic = data.topic ? data.topic.trim() : null;
+    if (data.topic !== undefined)
+      vocab.topic = data.topic ? data.topic.trim() : null;
 
     return this.vocabularyRepository.save(vocab);
   }
@@ -129,15 +139,16 @@ export class VocabularyService {
       .select('v.topic', 'topic')
       .addSelect('v.hskLevel', 'hskLevel')
       .addSelect('COUNT(*)', 'count')
-      .where('v.topic IS NOT NULL AND v.topic != \'\'')
+      .where("v.topic IS NOT NULL AND v.topic != ''")
       .groupBy('v.topic')
       .addGroupBy('v.hskLevel')
       .getRawMany();
 
-    const topicCountMap: Record<string, number> = {};
+    const topicCountMap: Record<string, number> = Object.create(null);
     counts.forEach((c) => {
       if (c.topic) {
-        topicCountMap[c.topic] = Number(c.count);
+        topicCountMap[c.topic] =
+          (topicCountMap[c.topic] ?? 0) + Number(c.count);
       }
     });
 

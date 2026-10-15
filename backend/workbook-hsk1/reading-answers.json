@@ -1,0 +1,18 @@
+{
+  "provenance": "Answers derived by reading the original scanned question and options; the supplied PDF contains no answer key.",
+  "lessons": {
+    "4": "CDBCDBBABA",
+    "5": "DCBCBDABCB",
+    "6": "CBDCABBAAB",
+    "7": "DCBCABBABA",
+    "8": "BDCCBABAAA",
+    "9": "DCBCABBAAB",
+    "10": "CBDCABBABA",
+    "11": "CBDABCBACC",
+    "12": "DBCBACBAAA",
+    "13": "BDCCABBABA",
+    "14": "CBDBACBACA",
+    "15": "DBCBACBACA"
+  },
+  "mock": "BDACFCAEBDCEABFCBCCB"
+}

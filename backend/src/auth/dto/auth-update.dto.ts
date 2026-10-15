@@ -1,39 +1,18 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
-import { FileDto } from '../../files/dto/file.dto';
-import { Transform } from 'class-transformer';
-import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
+import { ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { CreateUserDto } from '../../users/dto/create-user.dto';
 
-export class AuthUpdateDto {
-  @ApiPropertyOptional({ type: () => FileDto })
-  @IsOptional()
-  photo?: FileDto | null;
-
-  @ApiPropertyOptional({ example: 'John' })
-  @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
-  firstName?: string;
-
-  @ApiPropertyOptional({ example: 'Doe' })
-  @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
-  lastName?: string;
-
-  @ApiPropertyOptional({ example: 'new.email@example.com' })
-  @IsOptional()
-  @IsNotEmpty()
-  @IsEmail()
-  @Transform(lowerCaseTransformer)
-  email?: string;
-
+export class AuthUpdateDto extends PickType(CreateUserDto, [
+  'photo',
+  'firstName',
+  'lastName',
+  'email',
+  'password',
+] as const) {
   @ApiPropertyOptional()
-  @IsOptional()
-  @IsNotEmpty()
-  @MinLength(6)
-  password?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString()
   @IsNotEmpty({ message: 'mustBeNotEmpty' })
+  @MaxLength(72)
   oldPassword?: string;
 }

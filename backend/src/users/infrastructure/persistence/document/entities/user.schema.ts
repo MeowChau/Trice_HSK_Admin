@@ -18,6 +18,11 @@ export type UserSchemaDocument = HydratedDocument<UserSchemaClass>;
 })
 export class UserSchemaClass extends EntityDocumentHelper {
   @Prop({
+    type: Date,
+  })
+  emailVerifiedAt?: Date | null;
+
+  @Prop({
     type: String,
     unique: true,
   })

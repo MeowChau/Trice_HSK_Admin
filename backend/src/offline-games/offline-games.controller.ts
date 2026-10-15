@@ -6,14 +6,15 @@ import {
   Query,
   UseGuards,
   Request,
-  ParseIntPipe,
-  DefaultValuePipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard } from '../roles/roles.guard';
+import { ActiveGuard } from '../auth/guards/active.guard';
+import { HskQueryDto } from '../utils/dto/content-query.dto';
+import type { RequestWithUser } from '../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 import { OfflineGamesService } from './offline-games.service';
 import { SubmitOfflineScoreDto } from './dto/submit-offline-score.dto';
 
@@ -27,30 +28,32 @@ export class OfflineGamesController {
 
   @Get('words')
   @HttpCode(HttpStatus.OK)
-  async getWords(
-    @Query('hskLevel', ParseIntPipe) hskLevel: number,
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
-  ) {
-    const safeLimit = limit > 100 ? 100 : limit;
-    return this.offlineGamesService.getRandomWords(hskLevel, safeLimit);
+  async getWords(@Query() query: HskQueryDto) {
+    return this.offlineGamesService.getRandomWords(
+      query.hskLevel ?? 1,
+      query.limit ?? 50,
+    );
   }
 
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), ActiveGuard)
   @Post('submit')
   @HttpCode(HttpStatus.CREATED)
   async submitScore(
-    @Request() req: any,
+    @Request() req: RequestWithUser<JwtPayloadType>,
     @Body() submitDto: SubmitOfflineScoreDto,
   ) {
-    return this.offlineGamesService.saveScore(req.user.id, submitDto.score);
+    return this.offlineGamesService.saveScore(
+      Number(req.user.id),
+      submitDto.score,
+    );
   }
 
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), ActiveGuard)
   @Get('top-scores')
   @HttpCode(HttpStatus.OK)
-  async getTopScores(@Request() req: any) {
-    return this.offlineGamesService.getTopScores(req.user.id);
+  async getTopScores(@Request() req: RequestWithUser<JwtPayloadType>) {
+    return this.offlineGamesService.getTopScores(Number(req.user.id));
   }
 }

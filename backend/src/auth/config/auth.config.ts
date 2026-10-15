@@ -1,21 +1,31 @@
 import { registerAs } from '@nestjs/config';
 
 import { Logger } from '@nestjs/common';
-import { IsBooleanString, IsOptional, IsString } from 'class-validator';
+import {
+  IsBooleanString,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import validateConfig from '../../utils/validate-config';
 import { AuthConfig } from './auth-config.type';
 import ms from 'ms';
 
 const PLACEHOLDER_SECRETS = {
-  AUTH_JWT_SECRET: 'secret',
-  AUTH_REFRESH_SECRET: 'secret_for_refresh',
-  AUTH_FORGOT_SECRET: 'secret_for_forgot',
-  AUTH_CONFIRM_EMAIL_SECRET: 'secret_for_confirm_email',
+  AUTH_JWT_SECRET: ['secret', 'secret_trice_hsk_jwt_key'],
+  AUTH_REFRESH_SECRET: ['secret_for_refresh', 'secret_trice_hsk_refresh_key'],
+  AUTH_FORGOT_SECRET: ['secret_for_forgot'],
+  AUTH_CONFIRM_EMAIL_SECRET: ['secret_for_confirm_email'],
 } as const;
 
 function checkPlaceholderSecrets(): void {
   const placeholders = Object.entries(PLACEHOLDER_SECRETS)
-    .filter(([envVar, placeholder]) => process.env[envVar] === placeholder)
+    .filter(([envVar, placeholders]) =>
+      placeholders.some((placeholder) => process.env[envVar] === placeholder),
+    )
     .map(([envVar]) => envVar);
 
   if (placeholders.length === 0) {
@@ -32,6 +42,13 @@ function checkPlaceholderSecrets(): void {
 }
 
 class EnvironmentVariablesValidator {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10000)
+  AUTH_RATE_LIMIT?: number;
+
   @IsString()
   AUTH_JWT_SECRET: string;
 
@@ -76,5 +93,6 @@ export default registerAs<AuthConfig>('auth', () => {
     confirmEmailExpires: process.env
       .AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN as ms.StringValue,
     uniformErrors: process.env.AUTH_UNIFORM_ERRORS === 'true',
+    rateLimit: Number(process.env.AUTH_RATE_LIMIT ?? 10),
   };
 });

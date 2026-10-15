@@ -1,3 +1,5 @@
+import { ActiveGuard } from '../auth/guards/active.guard';
+import { UserIdPipe } from '../utils/pipes/user-id.pipe';
 import {
   Controller,
   Post,
@@ -24,10 +26,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { User } from './domain/user';
 import { UsersService } from './users.service';
 import { RolesGuard } from '../roles/roles.guard';
+import { StatusEnum } from '../statuses/statuses.enum';
 
 @ApiBearerAuth()
 @Roles(RoleEnum.admin)
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(AuthGuard('jwt'), ActiveGuard, RolesGuard)
 @ApiTags('Admin Users')
 @Controller({
   path: 'admin/users',
@@ -46,7 +49,7 @@ export class AdminUsersController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createProfileDto: CreateUserDto): Promise<User> {
-    createProfileDto.status = { id: 1 } as any; // Admin created users are active
+    createProfileDto.status = { id: StatusEnum.active }; // Admin created users are active
     return this.usersService.create(createProfileDto);
   }
 
@@ -60,8 +63,8 @@ export class AdminUsersController {
   @Post('teacher')
   @HttpCode(HttpStatus.CREATED)
   createTeacher(@Body() createProfileDto: CreateUserDto): Promise<User> {
-    createProfileDto.role = { id: RoleEnum.teacher } as any;
-    createProfileDto.status = { id: 1 } as any; // Teachers are active by default
+    createProfileDto.role = { id: RoleEnum.teacher };
+    createProfileDto.status = { id: StatusEnum.active }; // Teachers are active by default
     return this.usersService.create(createProfileDto);
   }
 
@@ -79,9 +82,9 @@ export class AdminUsersController {
     type: String,
     required: true,
   })
-  approve(@Param('id') id: User['id']): Promise<User | null> {
+  approve(@Param('id', UserIdPipe) id: User['id']): Promise<User | null> {
     const updateProfileDto = new UpdateUserDto();
-    updateProfileDto.status = { id: 1 } as any;
+    updateProfileDto.status = { id: StatusEnum.active };
     return this.usersService.update(id, updateProfileDto);
   }
 }

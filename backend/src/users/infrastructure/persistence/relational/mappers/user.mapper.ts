@@ -1,4 +1,5 @@
 import { FileEntity } from '../../../../../files/infrastructure/persistence/relational/entities/file.entity';
+
 import { FileMapper } from '../../../../../files/infrastructure/persistence/relational/mappers/file.mapper';
 import { RoleEntity } from '../../../../../roles/infrastructure/persistence/relational/entities/role.entity';
 import { StatusEntity } from '../../../../../statuses/infrastructure/persistence/relational/entities/status.entity';
@@ -8,6 +9,8 @@ import { UserEntity } from '../entities/user.entity';
 export class UserMapper {
   static toDomain(raw: UserEntity): User {
     const domainEntity = new User();
+    domainEntity.emailVerifiedAt = raw.emailVerifiedAt;
+
     domainEntity.id = raw.id;
     domainEntity.email = raw.email;
     domainEntity.password = raw.password;
@@ -62,6 +65,8 @@ export class UserMapper {
     }
 
     const persistenceEntity = new UserEntity();
+    persistenceEntity.emailVerifiedAt = domainEntity.emailVerifiedAt;
+
     if (domainEntity.id && typeof domainEntity.id === 'number') {
       persistenceEntity.id = domainEntity.id;
     }
@@ -74,8 +79,10 @@ export class UserMapper {
     persistenceEntity.position = domainEntity.position ?? null;
     persistenceEntity.firstName = domainEntity.firstName ?? null;
     persistenceEntity.lastName = domainEntity.lastName ?? null;
-    if (domainEntity.level !== undefined) persistenceEntity.level = domainEntity.level;
-    if (domainEntity.currentExp !== undefined) persistenceEntity.currentExp = domainEntity.currentExp;
+    if (domainEntity.level !== undefined)
+      persistenceEntity.level = domainEntity.level;
+    if (domainEntity.currentExp !== undefined)
+      persistenceEntity.currentExp = domainEntity.currentExp;
     persistenceEntity.avatarFrame = domainEntity.avatarFrame;
     persistenceEntity.currentHskLevel = domainEntity.currentHskLevel ?? null;
     persistenceEntity.targetHskLevel = domainEntity.targetHskLevel ?? null;

@@ -40,7 +40,7 @@ export class AuthService {
   ) {}
 
   async validateLogin(loginDto: AuthEmailLoginDto): Promise<LoginResponseDto> {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByLogin(loginDto.email);
 
     if (!user) {
       throw this.invalidLoginException({
@@ -71,14 +71,7 @@ export class AuthService {
       });
     }
 
-    if (user.status?.id && Number(user.status.id) !== StatusEnum.active) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          status: 'accountNotActive',
-        },
-      });
-    }
+    this.assertActive(user);
 
     const hash = crypto
       .createHash('sha256')
@@ -135,19 +128,14 @@ export class AuthService {
     }
 
     if (user) {
+      this.assertActive(user);
       if (socialEmail && !userByEmail) {
         user.email = socialEmail;
       }
-      await this.usersService.update(user.id, user as any);
+      await this.usersService.update(user.id, { email: user.email });
     } else if (userByEmail) {
       user = userByEmail;
-
-      if (user.status?.id?.toString() === StatusEnum.inactive.toString()) {
-        user.provider = authProvider;
-        user.socialId = socialData.id;
-
-        await this.usersService.update(user.id, user as any);
-      }
+      this.assertActive(user);
     } else if (socialData.id) {
       const role = {
         id: RoleEnum.user,
@@ -163,6 +151,7 @@ export class AuthService {
           : `user_${socialData.id}`,
         socialId: socialData.id,
         provider: authProvider,
+        emailVerifiedAt: socialEmail ? new Date() : null,
         role,
         status,
       });
@@ -178,6 +167,8 @@ export class AuthService {
         },
       });
     }
+
+    this.assertActive(user);
 
     const hash = crypto
       .createHash('sha256')
@@ -221,9 +212,29 @@ export class AuthService {
       },
     });
 
+    await this.sendConfirmationEmail(user);
+  }
+
+  async resendConfirmation(email: string): Promise<void> {
+    const user = await this.usersService.findByEmail(email);
+    if (
+      !user ||
+      user.provider !== AuthProvidersEnum.email ||
+      user.emailVerifiedAt
+    ) {
+      return;
+    }
+    await this.sendConfirmationEmail(user);
+  }
+
+  private async sendConfirmationEmail(user: User): Promise<void> {
+    if (!user.email) return;
+
     const hash = await this.jwtService.signAsync(
       {
         confirmEmailUserId: user.id,
+        purpose: 'confirm-email',
+        email: user.email,
       },
       {
         secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
@@ -236,7 +247,7 @@ export class AuthService {
     );
 
     await this.mailService.userSignUp({
-      to: dto.email,
+      to: user.email,
       data: {
         hash,
       },
@@ -244,74 +255,23 @@ export class AuthService {
   }
 
   async confirmEmail(hash: string): Promise<void> {
-    let userId: User['id'];
-
-    try {
-      const jwtData = await this.jwtService.verifyAsync<{
-        confirmEmailUserId: User['id'];
-      }>(hash, {
-        secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
-          infer: true,
-        }),
-        algorithms: ['HS256'],
-      });
-
-      userId = jwtData.confirmEmailUserId;
-    } catch {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          hash: `invalidHash`,
-        },
-      });
-    }
-
-    const user = await this.usersService.findById(userId);
-
-    if (
-      !user ||
-      user?.status?.id?.toString() !== StatusEnum.inactive.toString()
-    ) {
+    const data = await this.verifyEmailToken(hash, 'confirm-email');
+    const user = await this.usersService.findById(data.confirmEmailUserId);
+    if (!user) {
       throw new NotFoundException({
         status: HttpStatus.NOT_FOUND,
         error: `notFound`,
       });
     }
-
-    user.status = {
-      id: StatusEnum.active,
-    };
-
-    await this.usersService.update(user.id, user as any);
+    if (user.email !== data.email) throw this.invalidHashException();
+    if (!user.emailVerifiedAt) {
+      await this.usersService.update(user.id, { emailVerifiedAt: new Date() });
+    }
   }
 
   async confirmNewEmail(hash: string): Promise<void> {
-    let userId: User['id'];
-    let newEmail: User['email'];
-
-    try {
-      const jwtData = await this.jwtService.verifyAsync<{
-        confirmEmailUserId: User['id'];
-        newEmail: User['email'];
-      }>(hash, {
-        secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
-          infer: true,
-        }),
-        algorithms: ['HS256'],
-      });
-
-      userId = jwtData.confirmEmailUserId;
-      newEmail = jwtData.newEmail;
-    } catch {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          hash: `invalidHash`,
-        },
-      });
-    }
-
-    const user = await this.usersService.findById(userId);
+    const data = await this.verifyEmailToken(hash, 'change-email');
+    const user = await this.usersService.findById(data.confirmEmailUserId);
 
     if (!user) {
       throw new NotFoundException({
@@ -320,12 +280,13 @@ export class AuthService {
       });
     }
 
-    user.email = newEmail;
-    user.status = {
-      id: StatusEnum.active,
-    };
-
-    await this.usersService.update(user.id, user as any);
+    if (user.email !== data.email || !data.newEmail) {
+      throw this.invalidHashException();
+    }
+    await this.usersService.update(user.id, {
+      email: data.newEmail,
+      emailVerifiedAt: new Date(),
+    });
   }
 
   async forgotPassword(email: string): Promise<void> {
@@ -422,13 +383,7 @@ export class AuthService {
       });
     }
 
-    user.password = password;
-
-    await this.sessionService.deleteByUserId({
-      userId: user.id,
-    });
-
-    await this.usersService.update(user.id, user as any);
+    await this.usersService.update(user.id, { password });
   }
 
   async me(userJwtPayload: JwtPayloadType): Promise<NullableType<User>> {
@@ -481,11 +436,6 @@ export class AuthService {
             oldPassword: 'incorrectOldPassword',
           },
         });
-      } else {
-        await this.sessionService.deleteByUserIdWithExclude({
-          userId: currentUser.id,
-          excludeSessionId: userJwtPayload.sessionId,
-        });
       }
     }
 
@@ -505,6 +455,8 @@ export class AuthService {
         {
           confirmEmailUserId: currentUser.id,
           newEmail: userDto.email,
+          purpose: 'change-email',
+          email: currentUser.email,
         },
         {
           secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
@@ -524,10 +476,13 @@ export class AuthService {
       });
     }
 
-    delete userDto.email;
-    delete userDto.oldPassword;
+    const changes = { ...userDto };
+    delete changes.email;
+    delete changes.oldPassword;
 
-    await this.usersService.update(userJwtPayload.id, userDto);
+    await this.usersService.update(userJwtPayload.id, changes, {
+      excludeSessionId: userJwtPayload.sessionId,
+    });
 
     return this.usersService.findById(userJwtPayload.id);
   }
@@ -551,7 +506,7 @@ export class AuthService {
 
     const user = await this.usersService.findById(session.user.id);
 
-    if (!user?.role) {
+    if (!user?.role || Number(user.status?.id) !== StatusEnum.active) {
       throw new UnauthorizedException();
     }
 
@@ -560,9 +515,11 @@ export class AuthService {
       role: {
         id: user.role.id,
       },
-      status: user.status ? {
-        id: user.status.id,
-      } : undefined,
+      status: user.status
+        ? {
+            id: user.status.id,
+          }
+        : undefined,
       sessionId: session.id,
       hash,
     });
@@ -600,6 +557,64 @@ export class AuthService {
     });
   }
 
+  private assertActive(user: User): void {
+    if (Number(user.status?.id) !== StatusEnum.active) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: { status: 'accountNotActive' },
+      });
+    }
+  }
+
+  private invalidHashException(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      errors: { hash: 'invalidHash' },
+    });
+  }
+
+  private async verifyEmailToken(
+    hash: string,
+    purpose: 'confirm-email' | 'change-email',
+  ): Promise<{
+    confirmEmailUserId: User['id'];
+    email: string | null;
+    newEmail?: string;
+  }> {
+    try {
+      const data = await this.jwtService.verifyAsync<Record<string, unknown>>(
+        hash,
+        {
+          secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
+            infer: true,
+          }),
+          algorithms: ['HS256'],
+        },
+      );
+      const id = data.confirmEmailUserId;
+      const validId =
+        (typeof id === 'number' && Number.isInteger(id) && id > 0) ||
+        (typeof id === 'string' && /^[a-f\d]{24}$/i.test(id));
+      if (
+        !validId ||
+        data.purpose !== purpose ||
+        (data.email !== null && typeof data.email !== 'string') ||
+        (purpose === 'confirm-email' && !data.email) ||
+        (purpose === 'change-email' &&
+          (typeof data.newEmail !== 'string' || !data.newEmail))
+      ) {
+        throw this.invalidHashException();
+      }
+      return {
+        confirmEmailUserId: id as User['id'],
+        email: data.email as string | null,
+        newEmail: typeof data.newEmail === 'string' ? data.newEmail : undefined,
+      };
+    } catch {
+      throw this.invalidHashException();
+    }
+  }
+
   private getForgotSecret(user: User): string {
     // The secret embeds the current password hash, so every outstanding
     // reset link stops verifying as soon as the password changes — this is
@@ -625,14 +640,11 @@ export class AuthService {
     const tokenExpires = Date.now() + ms(tokenExpiresIn);
 
     const [token, refreshToken] = await Promise.all([
-      await this.jwtService.signAsync(
+      this.jwtService.signAsync(
         {
           id: data.id,
           role: data.role,
-          // `status` must be signed into the token: `ActiveGuard` reads it
-          // straight from the JWT payload (no database lookup), so leaving it
-          // out makes every route guarded by it answer 403 - even for an
-          // active admin.
+          // JwtStrategy replaces this snapshot with the current database status.
           status: data.status,
           sessionId: data.sessionId,
         },
@@ -641,7 +653,7 @@ export class AuthService {
           expiresIn: tokenExpiresIn,
         },
       ),
-      await this.jwtService.signAsync(
+      this.jwtService.signAsync(
         {
           sessionId: data.sessionId,
           hash: data.hash,
@@ -664,8 +676,3 @@ export class AuthService {
     };
   }
 }
-
-
-
-
-

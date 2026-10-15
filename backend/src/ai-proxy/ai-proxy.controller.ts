@@ -12,6 +12,10 @@ import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ActiveGuard } from '../auth/guards/active.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import {
+  PronunciationAssessmentDto,
+  WritingAssessmentDto,
+} from './dto/assessment.dto';
 
 @ApiTags('AI Proxy')
 @ApiBearerAuth()
@@ -22,7 +26,11 @@ export class AiProxyController {
 
   @Post('speaking/pronunciation-assessment')
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('audio'))
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    }),
+  )
   @ApiBody({
     schema: {
       type: 'object',
@@ -39,9 +47,9 @@ export class AiProxyController {
   })
   evaluatePronunciation(
     @UploadedFile() file: Express.Multer.File,
-    @Body('referenceText') referenceText: string,
+    @Body() data: PronunciationAssessmentDto,
   ) {
-    return this.aiProxyService.evaluatePronunciation(file, referenceText);
+    return this.aiProxyService.evaluatePronunciation(file, data.referenceText);
   }
 
   @Post('writing-assessment')
@@ -55,11 +63,11 @@ export class AiProxyController {
       },
     },
   })
-  evaluateWriting(
-    @Body('questionId') questionId: string,
-    @Body('userText') userText: string,
-    @Body('hskLevel') hskLevel: number,
-  ) {
-    return this.aiProxyService.evaluateWriting(questionId, userText, hskLevel);
+  evaluateWriting(@Body() data: WritingAssessmentDto) {
+    return this.aiProxyService.evaluateWriting(
+      data.questionId,
+      data.userText,
+      data.hskLevel,
+    );
   }
 }

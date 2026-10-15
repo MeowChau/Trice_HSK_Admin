@@ -39,10 +39,10 @@ export class QuestionEntity extends EntityRelationalHelper {
   hskLevel: number;
 
   @Column({ type: 'jsonb' })
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 
   @Column({ type: 'jsonb', nullable: true })
-  correctAnswer: Record<string, any> | null;
+  correctAnswer: Record<string, unknown> | null;
 
   @Column({ type: 'boolean', default: false })
   isGameQuestion: boolean;

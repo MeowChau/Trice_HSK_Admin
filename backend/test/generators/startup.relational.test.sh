@@ -10,5 +10,6 @@ npm run migration:run
 # Capture the freshly-generated entities (Article, Tag, Comment) as a migration.
 npm run migration:generate -- src/database/migrations/GeneratorE2E
 npm run migration:run
-npm run seed:run:relational
+node test/utils/prepare-test-credentials.cjs
+./node_modules/.bin/env-cmd -- npm run seed:run:relational
 npm run start:dev

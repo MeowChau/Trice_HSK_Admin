@@ -6,11 +6,15 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { StatusEnum } from '../../statuses/statuses.enum';
+import type { RequestWithUser } from '../../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../strategies/types/jwt-payload.type';
 
 @Injectable()
 export class ActiveGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context
+      .switchToHttp()
+      .getRequest<RequestWithUser<JwtPayloadType | undefined>>();
     const user = request.user;
 
     if (!user) {

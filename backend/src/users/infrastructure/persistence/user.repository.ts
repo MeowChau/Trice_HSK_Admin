@@ -23,6 +23,7 @@ export abstract class UserRepository {
   abstract findById(id: User['id']): Promise<NullableType<User>>;
   abstract findByIds(ids: User['id'][]): Promise<User[]>;
   abstract findByEmail(email: User['email']): Promise<NullableType<User>>;
+  abstract findByLogin(login: string): Promise<NullableType<User>>;
   abstract findBySocialIdAndProvider({
     socialId,
     provider,
@@ -37,5 +38,4 @@ export abstract class UserRepository {
   ): Promise<User | null>;
 
   abstract remove(id: User['id']): Promise<void>;
-  abstract getMaxStudentCode(): Promise<number>;
 }

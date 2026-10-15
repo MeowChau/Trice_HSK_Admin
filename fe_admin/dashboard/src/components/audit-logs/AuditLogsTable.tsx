@@ -1,9 +1,12 @@
 "use client";
+import { useCallback } from "react";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { errorMessage } from "@/lib/error-message";
 
-import React, { useEffect, useState, useMemo } from "react";
-import Image from "next/image";
-import { apiFetch, API_BASE_URL, readApiError } from "@/lib/api";
-import Badge from "../ui/badge/Badge";
+import React, { useEffect, useState } from "react";
+
+import { apiFetch, readApiError } from "@/lib/api";
+
 import {
   Table,
   TableBody,
@@ -31,8 +34,8 @@ interface AuditLogItem {
   entityType: string;
   entityId: string;
   summary: string;
-  oldData: Record<string, any> | null;
-  newData: Record<string, any> | null;
+  oldData: Record<string, unknown> | null;
+  newData: Record<string, unknown> | null;
   changedFields: string[] | null;
   ipAddress: string | null;
   userAgent: string | null;
@@ -48,6 +51,7 @@ interface AuditLogSummary {
 }
 
 export default function AuditLogsTable() {
+  const requests = useLatestRequest();
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [summary, setSummary] = useState<AuditLogSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,46 +65,59 @@ export default function AuditLogsTable() {
   const [limit] = useState(12);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
   const [selectedEntity, setSelectedEntity] = useState("ALL");
   const [selectedAction, setSelectedAction] = useState("ALL");
 
   // Selected Log for Modal
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
 
-  const fetchLogs = async (currentPage = page) => {
-    try {
-      setFetchError(null);
-      let queryUrl = `audit-logs?page=${currentPage}&limit=${limit}`;
-      if (searchTerm.trim()) {
-        queryUrl += `&search=${encodeURIComponent(searchTerm.trim())}`;
-      }
-      if (selectedEntity !== "ALL") {
-        queryUrl += `&entityType=${selectedEntity}`;
-      }
-      if (selectedAction !== "ALL") {
-        queryUrl += `&action=${selectedAction}`;
-      }
+  const fetchLogs = useCallback(
+    async (currentPage = 1) => {
+      const request = requests.start();
+      try {
+        setFetchError(null);
+        let queryUrl = `audit-logs?page=${currentPage}&limit=${limit}`;
+        if (appliedSearchTerm.trim()) {
+          queryUrl += `&search=${encodeURIComponent(appliedSearchTerm.trim())}`;
+        }
+        if (selectedEntity !== "ALL") {
+          queryUrl += `&entityType=${selectedEntity}`;
+        }
+        if (selectedAction !== "ALL") {
+          queryUrl += `&action=${selectedAction}`;
+        }
 
-      const res = await apiFetch(queryUrl, { cache: "no-store" });
-      if (res.ok) {
-        const json = await res.json();
-        setLogs(json.data || []);
-        setTotalPages(json.totalPages || 1);
-        setTotalItems(json.total || 0);
-      } else {
-        const errMsg = await readApiError(res);
-        setFetchError(errMsg || `Lỗi HTTP ${res.status}`);
+        const res = await apiFetch(queryUrl, {
+          signal: request.signal,
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (!request.isCurrent()) return;
+          setPage(currentPage);
+          setLogs(json.data || []);
+          setTotalPages(json.totalPages || 1);
+          setTotalItems(json.total || 0);
+        } else {
+          const errMsg = await readApiError(res);
+          setFetchError(errMsg || `Lỗi HTTP ${res.status}`);
+        }
+      } catch (err) {
+        if (!request.isCurrent()) return;
+        console.error("Failed to load audit logs:", err);
+        setFetchError(errorMessage(err, "") || "Không thể kết nối đến máy chủ");
+      } finally {
+        if (request.isCurrent()) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
-    } catch (err: any) {
-      console.error("Failed to load audit logs:", err);
-      setFetchError(err?.message || "Không thể kết nối đến máy chủ");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+    },
+    [requests, limit, appliedSearchTerm, selectedEntity, selectedAction],
+  );
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const res = await apiFetch("audit-logs/summary", { cache: "no-store" });
       if (res.ok) {
@@ -110,17 +127,21 @@ export default function AuditLogsTable() {
     } catch (err) {
       console.error("Failed to load summary stats:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchLogs(1);
-    fetchSummary();
-  }, [selectedEntity, selectedAction]);
+    void fetchSummary();
+  }, [fetchSummary]);
+  useEffect(() => {
+    void fetchLogs(1);
+    setPage(1);
+  }, [fetchLogs]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchLogs(1);
+    if (appliedSearchTerm === searchTerm.trim()) void fetchLogs(1);
+    else setAppliedSearchTerm(searchTerm.trim());
   };
 
   const handleRefresh = () => {
@@ -265,7 +286,8 @@ export default function AuditLogsTable() {
                 Truy vết chỉnh sửa (Audit Logs)
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Lịch sử ghi nhận toàn diện các hành động tạo, chỉnh sửa, xóa và thay đổi dữ liệu trong hệ thống
+                Lịch sử ghi nhận toàn diện các hành động tạo, chỉnh sửa, xóa và
+                thay đổi dữ liệu trong hệ thống
               </p>
             </div>
           </div>
@@ -514,7 +536,10 @@ export default function AuditLogsTable() {
                 const initial = (log.userName || "A").charAt(0).toUpperCase();
 
                 return (
-                  <TableRow key={log.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition">
+                  <TableRow
+                    key={log.id}
+                    className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition"
+                  >
                     {/* Thời gian */}
                     <TableCell className="min-w-[170px] px-4 py-3.5">
                       <div className="flex flex-col">
@@ -640,7 +665,8 @@ export default function AuditLogsTable() {
                     Chi tiết thay đổi & So sánh dữ liệu
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Bản ghi #{selectedLog.id} • {formatDate(selectedLog.createdAt)}
+                    Bản ghi #{selectedLog.id} •{" "}
+                    {formatDate(selectedLog.createdAt)}
                   </p>
                 </div>
               </div>
@@ -656,7 +682,9 @@ export default function AuditLogsTable() {
             {/* Action & User Info Overview */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/50 text-xs">
               <div>
-                <span className="text-gray-400 block mb-1">Người thực hiện</span>
+                <span className="text-gray-400 block mb-1">
+                  Người thực hiện
+                </span>
                 <strong className="text-gray-800 dark:text-white text-sm">
                   {selectedLog.userName}
                 </strong>
@@ -664,7 +692,9 @@ export default function AuditLogsTable() {
               </div>
 
               <div>
-                <span className="text-gray-400 block mb-1">Hành động & Đối tượng</span>
+                <span className="text-gray-400 block mb-1">
+                  Hành động & Đối tượng
+                </span>
                 <div className="flex items-center gap-2 mt-1">
                   {getActionBadge(selectedLog.action)}
                   {getEntityBadge(selectedLog.entityType, selectedLog.entityId)}
@@ -672,7 +702,9 @@ export default function AuditLogsTable() {
               </div>
 
               <div>
-                <span className="text-gray-400 block mb-1">Tóm tắt thao tác</span>
+                <span className="text-gray-400 block mb-1">
+                  Tóm tắt thao tác
+                </span>
                 <span className="font-medium text-gray-800 dark:text-gray-200">
                   {selectedLog.summary}
                 </span>
@@ -680,21 +712,24 @@ export default function AuditLogsTable() {
             </div>
 
             {/* Changed fields badges */}
-            {selectedLog.changedFields && selectedLog.changedFields.length > 0 && (
-              <div className="mt-4 flex items-center gap-2 text-xs">
-                <span className="text-gray-500 font-medium">Các trường bị tác động:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedLog.changedFields.map((field) => (
-                    <span
-                      key={field}
-                      className="rounded-md bg-amber-50 px-2 py-0.5 font-mono text-xs font-semibold text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-900/40 dark:text-amber-400"
-                    >
-                      {field}
-                    </span>
-                  ))}
+            {selectedLog.changedFields &&
+              selectedLog.changedFields.length > 0 && (
+                <div className="mt-4 flex items-center gap-2 text-xs">
+                  <span className="text-gray-500 font-medium">
+                    Các trường bị tác động:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedLog.changedFields.map((field) => (
+                      <span
+                        key={field}
+                        className="rounded-md bg-amber-50 px-2 py-0.5 font-mono text-xs font-semibold text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-900/40 dark:text-amber-400"
+                      >
+                        {field}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* BEFORE VS AFTER DIFF VIEWER */}
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -709,7 +744,9 @@ export default function AuditLogsTable() {
                       Dữ liệu Trước khi sửa (Old Data)
                     </h4>
                   </div>
-                  <span className="text-[11px] text-rose-600 font-medium">Ban đầu</span>
+                  <span className="text-[11px] text-rose-600 font-medium">
+                    Ban đầu
+                  </span>
                 </div>
 
                 {selectedLog.oldData ? (
@@ -734,7 +771,9 @@ export default function AuditLogsTable() {
                       Dữ liệu Sau khi sửa (New Data)
                     </h4>
                   </div>
-                  <span className="text-[11px] text-emerald-600 font-medium">Hiện tại</span>
+                  <span className="text-[11px] text-emerald-600 font-medium">
+                    Hiện tại
+                  </span>
                 </div>
 
                 {selectedLog.newData ? (

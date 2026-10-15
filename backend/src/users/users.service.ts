@@ -9,6 +9,7 @@ import { FilterUserDto, SortUserDto } from './dto/query-user.dto';
 import { UserRepository } from './infrastructure/persistence/user.repository';
 import { User } from './domain/user';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { AuthProvidersEnum } from '../auth/auth-providers.enum';
 import { FilesService } from '../files/files.service';
 import { RoleEnum } from '../roles/roles.enum';
@@ -19,6 +20,8 @@ import { Role } from '../roles/domain/role';
 import { Status } from '../statuses/domain/status';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { SessionService } from '../session/session.service';
+import { Session } from '../session/domain/session';
 
 @Injectable()
 export class UsersService {
@@ -26,21 +29,17 @@ export class UsersService {
     private readonly usersRepository: UserRepository,
     private readonly filesService: FilesService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly sessionService: SessionService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     // Do not remove comment below.
     // <creating-property />
 
-    let password: string | undefined = undefined;
-
-    if (createUserDto.password) {
-      const salt = await bcrypt.genSalt();
-      password = await bcrypt.hash(createUserDto.password, salt);
-    } else {
-      const salt = await bcrypt.genSalt();
-      password = await bcrypt.hash('123456', salt);
-    }
+    const password = await bcrypt.hash(
+      createUserDto.password ?? randomBytes(24).toString('base64url'),
+      await bcrypt.genSalt(),
+    );
 
     let email: string | null = null;
 
@@ -80,7 +79,7 @@ export class UsersService {
       photo = null;
     }
 
-    let role: Role | undefined = undefined;
+    let role: Role = { id: RoleEnum.user };
 
     if (createUserDto.role?.id) {
       const roleObject = Object.values(RoleEnum)
@@ -100,7 +99,7 @@ export class UsersService {
       };
     }
 
-    let status: Status | undefined = undefined;
+    let status: Status = { id: StatusEnum.pending };
 
     if (createUserDto.status?.id) {
       const statusObject = Object.values(StatusEnum)
@@ -120,15 +119,13 @@ export class UsersService {
       };
     }
 
-    let studentCode = createUserDto.studentCode ?? null;
-    if (status?.id === StatusEnum.active && !studentCode) {
-      const maxStudentCode = await this.usersRepository.getMaxStudentCode();
-      studentCode = maxStudentCode + 1;
-    }
+    const studentCode = createUserDto.studentCode ?? null;
 
     const createdUser = await this.usersRepository.create({
       // Do not remove comment below.
       // <creating-property-payload />
+      emailVerifiedAt: createUserDto.emailVerifiedAt,
+
       email: email,
       password: password,
       photo: photo,
@@ -136,7 +133,8 @@ export class UsersService {
       status: status,
       provider: createUserDto.provider ?? AuthProvidersEnum.email,
       socialId: createUserDto.socialId,
-      username: createUserDto.username || createUserDto.email || ('user_' + Date.now()),
+      username:
+        createUserDto.username || createUserDto.email || 'user_' + Date.now(),
       fullName: createUserDto.fullName ?? null,
       position: createUserDto.position ?? null,
       firstName: createUserDto.firstName ?? null,
@@ -144,23 +142,25 @@ export class UsersService {
       level: createUserDto.level ?? 1,
       currentExp: createUserDto.currentExp ?? 0,
       avatarFrame: createUserDto.avatarFrame ?? null,
+      studentCode,
+      currentHskLevel: createUserDto.currentHskLevel ?? null,
+      targetHskLevel: createUserDto.targetHskLevel ?? null,
+      dailyStudyTime: createUserDto.dailyStudyTime ?? null,
     });
 
     const isTeacher = createdUser.role?.id === RoleEnum.teacher;
-    this.auditLogsService
-      .createLog({
-        action: 'CREATE',
-        entityType: isTeacher ? 'TEACHER' : 'STUDENT',
-        entityId: String(createdUser.id),
-        summary: `Thêm mới tài khoản ${isTeacher ? 'giảng viên' : 'học viên'} ${createdUser.fullName || createdUser.email}`,
-        newData: {
-          email: createdUser.email,
-          fullName: createdUser.fullName,
-          position: createdUser.position,
-        },
-        changedFields: ['email', 'fullName', 'position'],
-      })
-      .catch(() => {});
+    this.auditLogsService.record({
+      action: 'CREATE',
+      entityType: isTeacher ? 'TEACHER' : 'STUDENT',
+      entityId: String(createdUser.id),
+      summary: `Thêm mới tài khoản ${isTeacher ? 'giảng viên' : 'học viên'} ${createdUser.fullName || createdUser.email}`,
+      newData: {
+        email: createdUser.email,
+        fullName: createdUser.fullName,
+        position: createdUser.position,
+      },
+      changedFields: ['email', 'fullName', 'position'],
+    });
 
     return createdUser;
   }
@@ -193,6 +193,10 @@ export class UsersService {
     return this.usersRepository.findByEmail(email);
   }
 
+  findByLogin(login: string): Promise<NullableType<User>> {
+    return this.usersRepository.findByLogin(login);
+  }
+
   findBySocialIdAndProvider({
     socialId,
     provider,
@@ -209,6 +213,7 @@ export class UsersService {
   async update(
     id: User['id'],
     updateUserDto: UpdateUserDto,
+    options?: { excludeSessionId: Session['id'] },
   ): Promise<User | null> {
     // Do not remove comment below.
     // <updating-property />
@@ -304,25 +309,20 @@ export class UsersService {
       };
     }
 
-    let studentCode = updateUserDto.studentCode;
-
-    if (updateUserDto.status?.id === StatusEnum.active) {
-      const userObj = await this.usersRepository.findById(id);
-      if (
-        userObj &&
-        userObj.status?.id !== StatusEnum.active &&
-        !userObj.studentCode
-      ) {
-        const maxStudentCode = await this.usersRepository.getMaxStudentCode();
-        studentCode = maxStudentCode + 1;
-      }
-    }
+    const studentCode = updateUserDto.studentCode;
 
     const oldUser = await this.usersRepository.findById(id);
 
     const updatedUser = await this.usersRepository.update(id, {
       // Do not remove comment below.
       // <updating-property-payload />
+      emailVerifiedAt:
+        updateUserDto.emailVerifiedAt !== undefined
+          ? updateUserDto.emailVerifiedAt
+          : email !== undefined && email !== oldUser?.email
+            ? null
+            : undefined,
+
       email,
       password,
       photo,
@@ -339,29 +339,56 @@ export class UsersService {
       currentExp: updateUserDto.currentExp,
 
       avatarFrame: updateUserDto.avatarFrame,
+      currentHskLevel: updateUserDto.currentHskLevel,
+      targetHskLevel: updateUserDto.targetHskLevel,
+      dailyStudyTime: updateUserDto.dailyStudyTime,
       studentCode,
     });
+
+    if (password && updatedUser) {
+      if (options) {
+        await this.sessionService.deleteByUserIdWithExclude({
+          userId: id,
+          excludeSessionId: options.excludeSessionId,
+        });
+      } else {
+        await this.sessionService.deleteByUserId({ userId: id });
+      }
+    }
 
     if (updatedUser) {
       const isTeacher = updatedUser.role?.id === RoleEnum.teacher;
       const changed: string[] = [];
-      const oldSnap: Record<string, any> = {};
-      const newSnap: Record<string, any> = {};
+      const oldSnap: Record<string, unknown> = {};
+      const newSnap: Record<string, unknown> = {};
 
-      if (updateUserDto.fullName !== undefined && updateUserDto.fullName !== oldUser?.fullName) {
+      if (
+        updateUserDto.fullName !== undefined &&
+        updateUserDto.fullName !== oldUser?.fullName
+      ) {
         changed.push('fullName');
         oldSnap.fullName = oldUser?.fullName;
         newSnap.fullName = updateUserDto.fullName;
       }
-      if (updateUserDto.position !== undefined && updateUserDto.position !== oldUser?.position) {
+      if (
+        updateUserDto.position !== undefined &&
+        updateUserDto.position !== oldUser?.position
+      ) {
         changed.push('position');
         oldSnap.position = oldUser?.position;
         newSnap.position = updateUserDto.position;
       }
-      if (updateUserDto.status !== undefined && updateUserDto.status.id !== oldUser?.status?.id) {
+      if (
+        updateUserDto.status !== undefined &&
+        updateUserDto.status.id !== oldUser?.status?.id
+      ) {
         changed.push('status');
-        oldSnap.status = oldUser?.status?.name || (oldUser?.status?.id === 1 ? 'Active' : 'Inactive');
-        newSnap.status = updatedUser.status?.name || (updateUserDto.status.id === 1 ? 'Active' : 'Inactive');
+        oldSnap.status =
+          oldUser?.status?.name ||
+          (oldUser?.status?.id === 1 ? 'Active' : 'Inactive');
+        newSnap.status =
+          updatedUser.status?.name ||
+          (updateUserDto.status.id === 1 ? 'Active' : 'Inactive');
       }
 
       let summary = `Cập nhật thông tin ${isTeacher ? 'giảng viên' : 'người dùng'} ${updatedUser.fullName || updatedUser.email}`;
@@ -371,17 +398,15 @@ export class UsersService {
         summary = `Đổi trạng thái tài khoản ${updatedUser.fullName || updatedUser.email} thành ${updatedUser.status?.name}`;
       }
 
-      this.auditLogsService
-        .createLog({
-          action: changed.includes('status') ? 'STATUS_CHANGE' : 'UPDATE',
-          entityType: isTeacher ? 'TEACHER' : 'STUDENT',
-          entityId: String(id),
-          summary,
-          oldData: oldSnap,
-          newData: newSnap,
-          changedFields: changed.length > 0 ? changed : ['profile'],
-        })
-        .catch(() => {});
+      this.auditLogsService.record({
+        action: changed.includes('status') ? 'STATUS_CHANGE' : 'UPDATE',
+        entityType: isTeacher ? 'TEACHER' : 'STUDENT',
+        entityId: String(id),
+        summary,
+        oldData: oldSnap,
+        newData: newSnap,
+        changedFields: changed.length > 0 ? changed : ['profile'],
+      });
     }
 
     return updatedUser;
@@ -390,18 +415,17 @@ export class UsersService {
   async remove(id: User['id']): Promise<void> {
     const user = await this.usersRepository.findById(id);
     await this.usersRepository.remove(id);
+    await this.sessionService.deleteByUserId({ userId: id });
     if (user) {
       const isTeacher = user.role?.id === RoleEnum.teacher;
-      this.auditLogsService
-        .createLog({
-          action: 'DELETE',
-          entityType: isTeacher ? 'TEACHER' : 'STUDENT',
-          entityId: String(id),
-          summary: `Xóa tài khoản ${isTeacher ? 'giảng viên' : 'người dùng'} ${user.fullName || user.email}`,
-          oldData: { email: user.email, fullName: user.fullName },
-          changedFields: ['deleted'],
-        })
-        .catch(() => {});
+      this.auditLogsService.record({
+        action: 'DELETE',
+        entityType: isTeacher ? 'TEACHER' : 'STUDENT',
+        entityId: String(id),
+        summary: `Xóa tài khoản ${isTeacher ? 'giảng viên' : 'người dùng'} ${user.fullName || user.email}`,
+        oldData: { email: user.email, fullName: user.fullName },
+        changedFields: ['deleted'],
+      });
     }
   }
 
@@ -416,29 +440,27 @@ export class UsersService {
       });
     }
 
-    // Generate a random 8-character password
-    const tempPassword = Math.random().toString(36).slice(-8);
-    
+    // Use cryptographic randomness for temporary credentials.
+    const tempPassword = randomBytes(12).toString('base64url');
+
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
     await this.usersRepository.update(id, {
       password: hashedPassword,
     });
+    await this.sessionService.deleteByUserId({ userId: id });
 
     const isTeacher = user.role?.id === RoleEnum.teacher;
-    this.auditLogsService
-      .createLog({
-        action: 'RESET_PASSWORD',
-        entityType: isTeacher ? 'TEACHER' : 'STUDENT',
-        entityId: String(id),
-        summary: `Cấp lại mật khẩu tạm thời cho ${isTeacher ? 'giảng viên' : 'học viên'} ${user.fullName || user.email}`,
-        newData: { email: user.email },
-        changedFields: ['password'],
-      })
-      .catch(() => {});
+    this.auditLogsService.record({
+      action: 'RESET_PASSWORD',
+      entityType: isTeacher ? 'TEACHER' : 'STUDENT',
+      entityId: String(id),
+      summary: `Cấp lại mật khẩu tạm thời cho ${isTeacher ? 'giảng viên' : 'học viên'} ${user.fullName || user.email}`,
+      newData: { email: user.email },
+      changedFields: ['password'],
+    });
 
     return tempPassword;
   }
-
 }

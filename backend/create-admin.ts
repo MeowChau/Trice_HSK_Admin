@@ -1,56 +1,48 @@
-import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
+import 'dotenv/config';
+import bcrypt from 'bcryptjs';
+import { AppDataSource } from './src/database/data-source';
 import { UserEntity } from './src/users/infrastructure/persistence/relational/entities/user.entity';
-const AppDataSource = new DataSource({
-    type: 'postgres',
-    host: process.env.DATABASE_HOST || 'localhost',
-    port: parseInt(process.env.DATABASE_PORT || '5432', 10),
-    username: process.env.DATABASE_USERNAME || 'postgres',
-    password: process.env.DATABASE_PASSWORD || 'secret',
-    database: process.env.DATABASE_NAME || 'api',
-    entities: [UserEntity],
-    synchronize: false,
-});
-async function run() {
-    await AppDataSource.initialize();
-    const repo = AppDataSource.getRepository(UserEntity);
-    const email = historyPrivateCredential("SEED_ADMIN_EMAIL");
-    const plainPassword = historyPrivateCredential("SEED_ADMIN_PASSWORD");
-    let user = await repo.findOne({ where: { email } });
-    const salt = await bcrypt.genSalt();
-    const password = await bcrypt.hash(plainPassword, salt);
-    if (!user) {
-        user = repo.create({
-            firstName: 'Admin',
-            lastName: 'Deptrai',
-            email,
-            password,
-            role: {
-                id: 1, // RoleEnum.admin
-                name: 'Admin',
-            },
-            status: {
-                id: 1, // StatusEnum.active
-                name: 'Active',
-            },
-        });
-    }
-    else {
-        user.password = password;
-        user.role = { id: 1, name: 'Admin' } as any;
-        user.status = { id: 1, name: 'Active' } as any;
-    }
-    await repo.save(user);
-    console.log(`Admin user created/updated successfully: ${email}`);
-    process.exit(0);
+import { SessionEntity } from './src/session/infrastructure/persistence/relational/entities/session.entity';
+import { RoleEnum } from './src/roles/roles.enum';
+import { StatusEnum } from './src/statuses/statuses.enum';
+
+async function run(): Promise<void> {
+  const email = process.env.SEED_ADMIN_EMAIL?.toLowerCase();
+  const plainPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!email || !plainPassword || plainPassword.length < 12) {
+    throw new Error(
+      'Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD (at least 12 characters) before creating an admin',
+    );
+  }
+  AppDataSource.setOptions({ synchronize: false });
+  await AppDataSource.initialize();
+  try {
+    await AppDataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(UserEntity);
+      const existing = await repo.findOne({ where: { email } });
+      const user = repo.create({
+        ...existing,
+        username: existing?.username || email,
+        email,
+        password: await bcrypt.hash(plainPassword, 12),
+        role: { id: RoleEnum.admin },
+        status: { id: StatusEnum.active },
+      });
+      await repo.save(user);
+      if (existing)
+        await manager
+          .getRepository(SessionEntity)
+          .softDelete({ user: { id: existing.id } });
+    });
+    console.log('Admin account saved successfully');
+  } finally {
+    await AppDataSource.destroy();
+  }
 }
-run().catch(err => {
-    console.error(err);
-    process.exit(1);
+
+void run().catch((error: unknown) => {
+  console.error(
+    error instanceof Error ? error.message : 'Admin account creation failed',
+  );
+  process.exitCode = 1;
 });
-function historyPrivateCredential(name: string): string {
-    const value = process.env[name];
-    if (!value)
-        throw new Error("Required private configuration: " + name);
-    return value;
-}

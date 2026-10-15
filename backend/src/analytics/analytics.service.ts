@@ -1,3 +1,5 @@
+import { databaseDate, studyDate } from '../utils/study-date';
+import { aggregateContent, recentMonths } from './content-counts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -23,7 +25,7 @@ export class AnalyticsService {
   ) {}
 
   async ping(userId: number, durationInSeconds: number, module: string) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = studyDate();
     const log = this.studySessionLogRepository.create({
       studyDate: today,
       durationInSeconds,
@@ -34,86 +36,42 @@ export class AnalyticsService {
   }
 
   async getDashboard(userId: number) {
-    const today = new Date().toISOString().split('T')[0];
-    // We want exactly the last 7 days including today (6 days ago to today)
-    const sevenDaysAgoDate = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = sevenDaysAgoDate.toISOString().split('T')[0];
-
-    // Generate array of exactly 7 last dates
-    const last7Dates: string[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-      last7Dates.push(d.toISOString().split('T')[0]);
-    }
-
-    // Get timeToday
-    const { sum: timeTodayRaw } = await this.studySessionLogRepository
+    const now = new Date();
+    const today = studyDate(now);
+    const last7Dates = Array.from({ length: 7 }, (_, index) =>
+      studyDate(new Date(now.getTime() - (6 - index) * 86400000)),
+    );
+    const sevenDaysAgo = last7Dates[0];
+    const totalsPromise = this.studySessionLogRepository
       .createQueryBuilder('log')
-      .select('SUM(log.durationInSeconds)', 'sum')
-      .where('log.userId = :userId AND log.studyDate = :today', {
-        userId,
-        today,
-      })
-      .getRawOne();
-
-    // Get time7Days
-    const { sum: time7DaysRaw } = await this.studySessionLogRepository
-      .createQueryBuilder('log')
-      .select('SUM(log.durationInSeconds)', 'sum')
-      .where('log.userId = :userId AND log.studyDate >= :sevenDaysAgo', {
-        userId,
-        sevenDaysAgo,
-      })
-      .getRawOne();
-
-    // Get timeTotal
-    const { sum: timeTotalRaw } = await this.studySessionLogRepository
-      .createQueryBuilder('log')
-      .select('SUM(log.durationInSeconds)', 'sum')
-      .where('log.userId = :userId', { userId })
-      .getRawOne();
-
-    // Chart 7 Days raw data
-    const chart7DaysRaw = await this.studySessionLogRepository
+      .select('COALESCE(SUM(log.durationInSeconds), 0)', 'timeTotal')
+      .addSelect(
+        'COALESCE(SUM(log.durationInSeconds) FILTER (WHERE log.studyDate = :today), 0)',
+        'timeToday',
+      )
+      .addSelect(
+        'COALESCE(SUM(log.durationInSeconds) FILTER (WHERE log.studyDate BETWEEN :sevenDaysAgo AND :today), 0)',
+        'time7Days',
+      )
+      .addSelect('COUNT(DISTINCT log.studyDate)', 'totalDays')
+      .where('log.userId = :userId', { userId, today, sevenDaysAgo })
+      .getRawOne<{
+        timeTotal: string;
+        timeToday: string;
+        time7Days: string;
+        totalDays: string;
+      }>();
+    const chartPromise = this.studySessionLogRepository
       .createQueryBuilder('log')
       .select('log.studyDate', 'date')
       .addSelect('SUM(log.durationInSeconds)', 'duration')
-      .where('log.userId = :userId AND log.studyDate >= :sevenDaysAgo', {
-        userId,
-        sevenDaysAgo,
-      })
+      .where(
+        'log.userId = :userId AND log.studyDate BETWEEN :sevenDaysAgo AND :today',
+        { userId, sevenDaysAgo, today },
+      )
       .groupBy('log.studyDate')
       .orderBy('log.studyDate', 'ASC')
-      .getRawMany();
-
-    // Create a lookup for chart7DaysRaw
-    const chartMap = new Map<string, number>();
-    chart7DaysRaw.forEach((row) => {
-      // row.date could be a Date object or string depending on postgres driver.
-      const dateStr =
-        typeof row.date === 'string'
-          ? row.date
-          : row.date.toISOString().split('T')[0];
-      chartMap.set(dateStr, parseInt(row.duration) || 0);
-    });
-
-    // Map into array of exactly 7 numbers (converted to hours)
-    const chart7Days = last7Dates.map((dateStr) => {
-      const seconds = chartMap.get(dateStr) || 0;
-      return parseFloat((seconds / 3600).toFixed(1));
-    });
-
-    // Total days studied
-    const { count: totalDaysStudiedRaw } = await this.studySessionLogRepository
-      .createQueryBuilder('log')
-      .select('COUNT(DISTINCT log.studyDate)', 'count')
-      .where('log.userId = :userId', { userId })
-      .getRawOne();
-
-    const timeTotalSeconds = parseInt(timeTotalRaw) || 0;
-    const totalDaysStudied = parseInt(totalDaysStudiedRaw) || 0;
-    const averagePerDay =
-      totalDaysStudied > 0 ? timeTotalSeconds / totalDaysStudied : 0;
+      .getRawMany<{ date: string | Date; duration: string }>();
 
     // Longest Streak Logic (PostgreSQL)
     // Fixed: Use DISTINCT "studyDate"::date in CTE to avoid same-day pings breaking the streak
@@ -135,19 +93,30 @@ export class AnalyticsService {
       ORDER BY streak DESC
       LIMIT 1;
     `;
-    const streakResult = await this.studySessionLogRepository.query(
-      streakQuery,
-      [userId],
+    const [totals, chartRows, streakResult] = await Promise.all([
+      totalsPromise,
+      chartPromise,
+      this.studySessionLogRepository.query(streakQuery, [userId]),
+    ]);
+    const chartMap = new Map(
+      chartRows.map((row) => [databaseDate(row.date), Number(row.duration)]),
     );
+    const chart7Days = last7Dates.map((date) =>
+      Number(((chartMap.get(date) || 0) / 3600).toFixed(1)),
+    );
+    const timeTotalSeconds = Number(totals?.timeTotal || 0);
+    const totalDaysStudied = Number(totals?.totalDays || 0);
+    const averagePerDay =
+      totalDaysStudied > 0 ? timeTotalSeconds / totalDaysStudied : 0;
     const longestStreak = streakResult[0]?.streak
       ? parseInt(streakResult[0].streak)
       : 0;
 
     const timeToday = parseFloat(
-      ((parseInt(timeTodayRaw) || 0) / 3600).toFixed(1),
+      (Number(totals?.timeToday || 0) / 3600).toFixed(1),
     );
     const time7Days = parseFloat(
-      ((parseInt(time7DaysRaw) || 0) / 3600).toFixed(1),
+      (Number(totals?.time7Days || 0) / 3600).toFixed(1),
     );
     const timeTotal = parseFloat((timeTotalSeconds / 3600).toFixed(1));
     const averagePerDayHours = parseFloat((averagePerDay / 3600).toFixed(1));
@@ -263,20 +232,37 @@ export class AnalyticsService {
 
   async getTeacherStats() {
     // 1. Overview KPIs
-    const teachers = await this.userRepository.find({
-      where: { role: { id: 3 } },
-      relations: ['photo', 'status', 'role'],
-      order: { createdAt: 'DESC' },
-      withDeleted: true,
-    });
-
+    const now = new Date();
+    const months = recentMonths(now);
+    const [teachers, questions, exams, practices] = await Promise.all([
+      this.userRepository.find({
+        where: { role: { id: 3 } },
+        relations: ['photo', 'status'],
+        order: { createdAt: 'DESC' },
+        withDeleted: true,
+        select: {
+          id: true,
+          fullName: true,
+          username: true,
+          email: true,
+          position: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          photo: { id: true, path: true },
+          status: { id: true },
+        },
+      }),
+      aggregateContent(this.questionRepository, months, true),
+      aggregateContent(this.examRepository, months),
+      aggregateContent(this.practiceSetRepository, months),
+    ]);
     const totalTeachers = teachers.length;
     const activeTeachers = teachers.filter(
       (t) => t.status?.id === 1 && !t.deletedAt,
     ).length;
 
     // Growth calculation: teachers created this month vs last month
-    const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
@@ -301,10 +287,14 @@ export class AnalyticsService {
       );
     }
 
-    const totalQuestionsContributed = await this.questionRepository.count();
-    const totalExams = await this.examRepository.count();
-    const totalPracticeSets = await this.practiceSetRepository.count();
-    const totalExamsContributed = totalExams + totalPracticeSets;
+    const totalQuestionsContributed = questions.reduce(
+      (sum, row) => sum + Number(row.count),
+      0,
+    );
+    const totalExamsContributed = [...exams, ...practices].reduce(
+      (sum, row) => sum + Number(row.count),
+      0,
+    );
 
     // 2. Position Distribution (Donut Chart)
     const b1Count = teachers.filter(
@@ -324,95 +314,38 @@ export class AnalyticsService {
       ],
     };
 
-    // 3. Productivity Timeline (Past 6 Months)
-    const monthNames = [
-      'Thg 1',
-      'Thg 2',
-      'Thg 3',
-      'Thg 4',
-      'Thg 5',
-      'Thg 6',
-      'Thg 7',
-      'Thg 8',
-      'Thg 9',
-      'Thg 10',
-      'Thg 11',
-      'Thg 12',
-    ];
-    const timelineCategories: string[] = [];
-    const questionsSeries: number[] = [];
-    const examsSeries: number[] = [];
-
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(currentYear, currentMonth - i, 1);
-      const nextD = new Date(currentYear, currentMonth - i + 1, 1);
-      const label = monthNames[d.getMonth()];
-      timelineCategories.push(label);
-
-      const qInMonth = await this.questionRepository
-        .createQueryBuilder('q')
-        .where('q.createdAt >= :d AND q.createdAt < :nextD', { d, nextD })
-        .getCount();
-
-      const eInMonth = await this.examRepository
-        .createQueryBuilder('e')
-        .where('e.createdAt >= :d AND e.createdAt < :nextD', { d, nextD })
-        .getCount();
-      const psInMonth = await this.practiceSetRepository
-        .createQueryBuilder('ps')
-        .where('ps.createdAt >= :d AND ps.createdAt < :nextD', { d, nextD })
-        .getCount();
-
-      questionsSeries.push(qInMonth);
-      examsSeries.push(eInMonth + psInMonth);
-    }
-
-    // 4. Skills & Levels Distribution
-    const rawSkills = await this.questionRepository
-      .createQueryBuilder('q')
-      .select('q.skill', 'skill')
-      .addSelect('COUNT(q.id)', 'count')
-      .groupBy('q.skill')
-      .getRawMany();
-
+    const timelineCategories = months.map((month) => month.label);
+    const questionsSeries = months.map((_, index) =>
+      questions
+        .filter((row) => Number(row.bucket) === index)
+        .reduce((sum, row) => sum + Number(row.count), 0),
+    );
+    const examsSeries = months.map((_, index) =>
+      [...exams, ...practices]
+        .filter((row) => Number(row.bucket) === index)
+        .reduce((sum, row) => sum + Number(row.count), 0),
+    );
+    const skillLabels: Record<string, string> = {
+      LISTENING: 'Nghe',
+      READING: 'Đọc',
+      WRITING: 'Viết',
+      SPEAKING: 'Nói',
+    };
     const skillCounts: Record<string, number> = {
       Nghe: 0,
       Đọc: 0,
       Viết: 0,
       Nói: 0,
     };
-
-    rawSkills.forEach((r) => {
-      const s = r.skill?.toUpperCase();
-      if (s === 'LISTENING') skillCounts['Nghe'] = parseInt(r.count, 10);
-      else if (s === 'READING') skillCounts['Đọc'] = parseInt(r.count, 10);
-      else if (s === 'WRITING') skillCounts['Viết'] = parseInt(r.count, 10);
-      else if (s === 'SPEAKING') skillCounts['Nói'] = parseInt(r.count, 10);
-    });
-
-    const rawLevels = await this.questionRepository
-      .createQueryBuilder('q')
-      .select('q.hskLevel', 'level')
-      .addSelect('COUNT(q.id)', 'count')
-      .groupBy('q.hskLevel')
-      .orderBy('q.hskLevel', 'ASC')
-      .getRawMany();
-
-    const levelCounts: Record<string, number> = {
-      'HSK 1': 0,
-      'HSK 2': 0,
-      'HSK 3': 0,
-      'HSK 4': 0,
-      'HSK 5': 0,
-      'HSK 6': 0,
-    };
-
-    rawLevels.forEach((r) => {
-      const lvl = parseInt(r.level, 10);
-      if (lvl >= 1 && lvl <= 6) {
-        levelCounts[`HSK ${lvl}`] = parseInt(r.count, 10);
-      }
-    });
+    const levelCounts: Record<string, number> = Object.fromEntries(
+      Array.from({ length: 6 }, (_, i) => [`HSK ${i + 1}`, 0]),
+    );
+    for (const row of questions) {
+      const label = skillLabels[row.skill || ''];
+      if (label) skillCounts[label] += Number(row.count);
+      if (row.level && row.level >= 1 && row.level <= 6)
+        levelCounts[`HSK ${row.level}`] += Number(row.count);
+    }
 
     // 5. Leaderboard / Detail Table
     const leaderboard = teachers.map((t) => {

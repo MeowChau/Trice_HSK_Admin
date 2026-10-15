@@ -50,4 +50,4 @@ docker compose -f "$COMPOSE_FILE" --env-file env-example-relational -p "$COMPOSE
 
 # Wait for the API container's port 3001 (mirrors the existing test:e2e:*:docker pattern).
 docker compose -f "$COMPOSE_FILE" -p "$COMPOSE_PROJECT" exec api /opt/wait-for-it.sh -t 0 localhost:3001 -- \
-  npx jest --config test/jest-e2e.json --testPathIgnorePatterns=/node_modules/ --testPathPatterns=generators-relational --runInBand
+  ./node_modules/.bin/env-cmd -- npx jest --config test/jest-e2e.json --testPathIgnorePatterns=/node_modules/ --testPathPatterns=generators-relational --runInBand

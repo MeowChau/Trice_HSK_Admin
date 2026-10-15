@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsInt,
+  IsString,
+  Min,
+  Max,
+  MaxLength,
+} from 'class-validator';
 
 export class PingSessionDto {
   @ApiProperty({
@@ -7,7 +14,9 @@ export class PingSessionDto {
     description: 'Duration of the study session ping in seconds',
   })
   @IsNotEmpty()
-  @IsNumber()
+  @IsInt()
+  @Min(1)
+  @Max(3600)
   durationInSeconds: number;
 
   @ApiProperty({
@@ -16,5 +25,6 @@ export class PingSessionDto {
   })
   @IsNotEmpty()
   @IsString()
+  @MaxLength(100)
   module: string;
 }

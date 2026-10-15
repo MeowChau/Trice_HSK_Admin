@@ -14,6 +14,7 @@ import { DatabaseConfig } from '../database/config/database-config.type';
 import databaseConfig from '../database/config/database.config';
 import { FilesModule } from '../files/files.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { SessionModule } from '../session/session.module';
 
 // <database-block>
 const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
@@ -28,6 +29,7 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
     infrastructurePersistenceModule,
     FilesModule,
     AuditLogsModule,
+    SessionModule,
   ],
   controllers: [UsersController, AdminUsersController, MeController],
   providers: [UsersService],

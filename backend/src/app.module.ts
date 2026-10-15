@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { DatabaseExceptionFilter } from './utils/filters/database-exception.filter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-yet';
+import { createKeyv } from '@keyv/redis';
 import { UsersModule } from './users/users.module';
 import { FilesModule } from './files/files.module';
 import { AuthModule } from './auth/auth.module';
@@ -58,6 +60,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
 // </database-block>
 
 @Module({
+  providers: [{ provide: APP_FILTER, useClass: DatabaseExceptionFilter }],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -79,7 +82,10 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         fallbackLanguage: configService.getOrThrow('app.fallbackLanguage', {
           infer: true,
         }),
-        loaderOptions: { path: path.join(__dirname, '/i18n/'), watch: true },
+        loaderOptions: {
+          path: path.join(__dirname, '/i18n/'),
+          watch: process.env.NODE_ENV !== 'production',
+        },
       }),
       resolvers: [
         {
@@ -113,19 +119,28 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     ExamsModule,
     CacheModule.registerAsync({
       isGlobal: true,
-      useFactory: async () => {
-        const store = await redisStore({
-          url: process.env.REDIS_URL || 'redis://localhost:6379/1',
-        });
-        return { store };
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        return {
+          stores: [
+            createKeyv(
+              configService.get<string>('REDIS_URL', { infer: true }) ||
+                'redis://localhost:6379/1',
+            ),
+          ],
+          ttl: 60000,
+        };
       },
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 10,
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService<AllConfigType>) => [
+        {
+          ttl: 60000,
+          limit: configService.getOrThrow('auth.rateLimit', { infer: true }),
+        },
+      ],
+    }),
     ScheduleModule.forRoot(),
     GamificationModule,
     PracticeSetsModule,

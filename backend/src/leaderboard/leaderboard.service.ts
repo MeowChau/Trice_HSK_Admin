@@ -1,3 +1,4 @@
+import { studyDate } from '../utils/study-date';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -25,24 +26,25 @@ export class LeaderboardService {
     // Timeframe date boundary
     const now = new Date();
     let timeframeCondition = '';
-    const queryParams: any[] = [];
+    const queryParams: (string | number)[] = [];
     let paramIndex = 1;
 
     if (timeframe === 'month') {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .split('T')[0];
+      const startOfMonth = studyDate(now).slice(0, 7) + '-01';
       timeframeCondition = `WHERE "studyDate" >= $${paramIndex}`;
       queryParams.push(startOfMonth);
       paramIndex++;
     } else if (timeframe === 'week') {
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0];
+      const sevenDaysAgo = studyDate(
+        new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000),
+      );
       timeframeCondition = `WHERE "studyDate" >= $${paramIndex}`;
       queryParams.push(sevenDaysAgo);
       paramIndex++;
     }
+
+    const todayParameter = `$${paramIndex}`;
+    queryParams.push(studyDate(now));
 
     // 1. Calculate streak metrics using CTE
     const streakSql = `
@@ -83,7 +85,7 @@ export class LeaderboardService {
       SELECT
         u.id as "userId",
         COALESCE(MAX(sg.streak_length), 0)::int as "longestStreak",
-        COALESCE(MAX(CASE WHEN sg.end_date >= CURRENT_DATE - INTERVAL '1 day' THEN sg.streak_length ELSE 0 END), 0)::int as "currentStreak",
+        COALESCE(MAX(CASE WHEN sg.end_date >= ${todayParameter}::date - INTERVAL '1 day' THEN sg.streak_length ELSE 0 END), 0)::int as "currentStreak",
         COALESCE(ut.total_days, 0)::int as "totalDays",
         COALESCE(ut.total_seconds, 0)::bigint as "totalSeconds",
         ut.last_study_date::text as "lastStudyDate"
@@ -103,7 +105,7 @@ export class LeaderboardService {
       lastStudyDate: string | null;
     }> = await this.userRepository.query(streakSql, queryParams);
 
-    const streakMap = new Map<number, typeof streakRows[0]>();
+    const streakMap = new Map<number, (typeof streakRows)[0]>();
     streakRows.forEach((row) => streakMap.set(Number(row.userId), row));
 
     // 2. Fetch users with relations
@@ -123,10 +125,10 @@ export class LeaderboardService {
 
     const students = await userQuery.getMany();
 
-    const todayStr = now.toISOString().split('T')[0];
-    const yesterdayStr = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0];
+    const todayStr = studyDate(now);
+    const yesterdayStr = studyDate(
+      new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    );
 
     // Combine user details with streak metrics
     const leaderboard = students.map((student) => {
@@ -202,9 +204,7 @@ export class LeaderboardService {
       (item) => item.currentStreak > 0,
     ).length;
     const totalStudyHours = parseFloat(
-      leaderboard
-        .reduce((sum, item) => sum + item.totalHours, 0)
-        .toFixed(1),
+      leaderboard.reduce((sum, item) => sum + item.totalHours, 0).toFixed(1),
     );
 
     return {

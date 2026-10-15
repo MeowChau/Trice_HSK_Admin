@@ -1,3 +1,4 @@
+import { ActiveGuard } from '../../../../auth/guards/active.guard';
 import {
   Controller,
   Post,
@@ -29,7 +30,7 @@ export class FilesS3Controller {
     type: FileResponseDto,
   })
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), ActiveGuard)
   @Post('upload')
   @ApiConsumes('multipart/form-data')
   @ApiBody({

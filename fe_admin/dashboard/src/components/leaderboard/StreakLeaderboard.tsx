@@ -1,8 +1,12 @@
 "use client";
+import { useCallback } from "react";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { errorMessage } from "@/lib/error-message";
 
 import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import { apiFetch, API_BASE_URL, readApiError } from "@/lib/api";
+import { resolveFileUrl } from "@/lib/media-url";
 import Badge from "../ui/badge/Badge";
 import {
   Table,
@@ -11,13 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import {
-  ShootingStarIcon,
-  BoltIcon,
-  TimeIcon,
-  CheckCircleIcon,
-  GroupIcon,
-} from "@/icons";
+import { ShootingStarIcon, BoltIcon, TimeIcon, CheckCircleIcon } from "@/icons";
 
 interface StudentStreakItem {
   id: number | string;
@@ -51,6 +49,7 @@ interface StreakLeaderboardData {
 }
 
 export default function StreakLeaderboard() {
+  const requests = useLatestRequest();
   const [data, setData] = useState<StreakLeaderboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -59,10 +58,15 @@ export default function StreakLeaderboard() {
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedHskLevel, setSelectedHskLevel] = useState<string>(""); // "" = all, "1" -> "9"
-  const [selectedTimeframe, setSelectedTimeframe] = useState<"all" | "month" | "week">("all");
-  const [sortBy, setSortBy] = useState<"current_desc" | "longest_desc" | "days_desc" | "hours_desc" | "level_desc">("current_desc");
+  const [selectedTimeframe, setSelectedTimeframe] = useState<
+    "all" | "month" | "week"
+  >("all");
+  const [sortBy, setSortBy] = useState<
+    "current_desc" | "longest_desc" | "days_desc" | "hours_desc" | "level_desc"
+  >("current_desc");
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
+    const request = requests.start();
     try {
       setFetchError(null);
       let queryUrl = `leaderboard/streak?timeframe=${selectedTimeframe}`;
@@ -70,26 +74,33 @@ export default function StreakLeaderboard() {
         queryUrl += `&hskLevel=${selectedHskLevel}`;
       }
 
-      const res = await apiFetch(queryUrl, { cache: "no-store" });
+      const res = await apiFetch(queryUrl, {
+        signal: request.signal,
+        cache: "no-store",
+      });
       if (res.ok) {
         const json = await res.json();
+        if (!request.isCurrent()) return;
         setData(json);
       } else {
         const errMsg = await readApiError(res);
         setFetchError(errMsg || `Lỗi HTTP ${res.status}`);
       }
-    } catch (err: any) {
+    } catch (err) {
+      if (!request.isCurrent()) return;
       console.error("Failed to load streak leaderboard:", err);
-      setFetchError(err?.message || "Không thể kết nối đến máy chủ");
+      setFetchError(errorMessage(err, "") || "Không thể kết nối đến máy chủ");
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (request.isCurrent()) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
-  };
+  }, [requests, selectedHskLevel, selectedTimeframe]);
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [selectedHskLevel, selectedTimeframe]);
+  }, [fetchLeaderboard]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -97,12 +108,7 @@ export default function StreakLeaderboard() {
   };
 
   const getAvatarUrl = (photo?: { id: string; path: string } | null) => {
-    if (!photo?.path) return null;
-    let cleanPath = photo.path.replace(/\\/g, "/");
-    if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
-      return cleanPath;
-    }
-    return `${API_BASE_URL}/${cleanPath.replace(/^\/+/, "")}`;
+    return resolveFileUrl(photo?.path, API_BASE_URL);
   };
 
   const formatDate = (dateStr?: string | null) => {
@@ -167,17 +173,19 @@ export default function StreakLeaderboard() {
         (item) =>
           item.fullName.toLowerCase().includes(term) ||
           item.email.toLowerCase().includes(term) ||
-          (item.studentCode && String(item.studentCode).includes(term))
+          (item.studentCode && String(item.studentCode).includes(term)),
       );
     }
 
     list.sort((a, b) => {
       if (sortBy === "current_desc") {
-        if (b.currentStreak !== a.currentStreak) return b.currentStreak - a.currentStreak;
+        if (b.currentStreak !== a.currentStreak)
+          return b.currentStreak - a.currentStreak;
         return b.longestStreak - a.longestStreak;
       }
       if (sortBy === "longest_desc") {
-        if (b.longestStreak !== a.longestStreak) return b.longestStreak - a.longestStreak;
+        if (b.longestStreak !== a.longestStreak)
+          return b.longestStreak - a.longestStreak;
         return b.currentStreak - a.currentStreak;
       }
       if (sortBy === "days_desc") {
@@ -214,7 +222,8 @@ export default function StreakLeaderboard() {
                 Bảng xếp hạng Chuỗi ngày học
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Vinh danh học viên chuyên cần, duy trì kỷ luật và ngọn lửa học tập liên tục mỗi ngày
+                Vinh danh học viên chuyên cần, duy trì kỷ luật và ngọn lửa học
+                tập liên tục mỗi ngày
               </p>
             </div>
           </div>
@@ -278,7 +287,10 @@ export default function StreakLeaderboard() {
           <div className="mt-2 text-xs truncate text-gray-600 dark:text-gray-400">
             {data?.summary?.topStreakUser ? (
               <span>
-                Đang dẫn đầu: <strong className="text-gray-900 dark:text-white">{data.summary.topStreakUser}</strong>
+                Đang dẫn đầu:{" "}
+                <strong className="text-gray-900 dark:text-white">
+                  {data.summary.topStreakUser}
+                </strong>
               </span>
             ) : (
               <span>Chưa có học viên nào giữ chuỗi</span>
@@ -334,7 +346,7 @@ export default function StreakLeaderboard() {
                 ? Math.round(
                     ((data.summary.activeStreaksCount || 0) /
                       data.summary.totalStudents) *
-                      100
+                      100,
                   )
                 : 0}
               %
@@ -412,9 +424,7 @@ export default function StreakLeaderboard() {
                   {top2.studentCode ? `MSV: #${top2.studentCode}` : top2.email}
                 </span>
 
-                <div className="mt-2">
-                  {getHskBadge(top2.targetHskLevel)}
-                </div>
+                <div className="mt-2">{getHskBadge(top2.targetHskLevel)}</div>
 
                 <div className="mt-3 flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-sm font-bold text-orange-600 dark:bg-orange-950/30 dark:text-orange-400">
                   <span>🔥</span>
@@ -461,9 +471,7 @@ export default function StreakLeaderboard() {
                   {top1.studentCode ? `MSV: #${top1.studentCode}` : top1.email}
                 </span>
 
-                <div className="mt-2.5">
-                  {getHskBadge(top1.targetHskLevel)}
-                </div>
+                <div className="mt-2.5">{getHskBadge(top1.targetHskLevel)}</div>
 
                 <div className="mt-3.5 flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-1.5 text-base font-extrabold text-white shadow-md">
                   <span>🔥</span>
@@ -471,7 +479,8 @@ export default function StreakLeaderboard() {
                 </div>
 
                 <div className="mt-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  Kỷ lục: {top1.longestStreak} ngày • {top1.totalDays} ngày học • Lv.{top1.level}
+                  Kỷ lục: {top1.longestStreak} ngày • {top1.totalDays} ngày học
+                  • Lv.{top1.level}
                 </div>
               </div>
             )}
@@ -508,9 +517,7 @@ export default function StreakLeaderboard() {
                   {top3.studentCode ? `MSV: #${top3.studentCode}` : top3.email}
                 </span>
 
-                <div className="mt-2">
-                  {getHskBadge(top3.targetHskLevel)}
-                </div>
+                <div className="mt-2">{getHskBadge(top3.targetHskLevel)}</div>
 
                 <div className="mt-3 flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-sm font-bold text-orange-600 dark:bg-orange-950/30 dark:text-orange-400">
                   <span>🔥</span>
@@ -534,7 +541,8 @@ export default function StreakLeaderboard() {
               Chi tiết Bảng xếp hạng Chuỗi ngày
             </h3>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Toàn bộ học viên được tính điểm dựa trên số ngày học liên tục ghi nhận từ hệ thống
+              Toàn bộ học viên được tính điểm dựa trên số ngày học liên tục ghi
+              nhận từ hệ thống
             </p>
           </div>
 
@@ -572,7 +580,11 @@ export default function StreakLeaderboard() {
             {/* Timeframe Filter */}
             <select
               value={selectedTimeframe}
-              onChange={(e) => setSelectedTimeframe(e.target.value as any)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "all" || value === "month" || value === "week")
+                  setSelectedTimeframe(value);
+              }}
               className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
               <option value="all">Toàn thời gian</option>
@@ -583,7 +595,17 @@ export default function StreakLeaderboard() {
             {/* Sort Filter */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (
+                  value === "current_desc" ||
+                  value === "longest_desc" ||
+                  value === "days_desc" ||
+                  value === "hours_desc" ||
+                  value === "level_desc"
+                )
+                  setSortBy(value);
+              }}
               className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
               <option value="current_desc">Chuỗi hiện tại (Cao ➔ Thấp)</option>
@@ -671,7 +693,10 @@ export default function StreakLeaderboard() {
                 const hasStreak = student.currentStreak > 0;
 
                 return (
-                  <TableRow key={student.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition">
+                  <TableRow
+                    key={student.id}
+                    className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition"
+                  >
                     {/* Hạng */}
                     <TableCell className="w-16 px-4 py-3.5 text-center">
                       {hasStreak && rank === 1 ? (
@@ -754,7 +779,9 @@ export default function StreakLeaderboard() {
                           <span>{student.currentStreak} ngày</span>
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400 font-medium">0 ngày</span>
+                        <span className="text-xs text-gray-400 font-medium">
+                          0 ngày
+                        </span>
                       )}
                     </TableCell>
 

@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ActiveGuard } from '../auth/guards/active.guard';
+import { LeaderboardQueryDto } from '../utils/dto/content-query.dto';
 
 @ApiTags('Leaderboard')
 @ApiBearerAuth()
@@ -53,15 +54,7 @@ export class LeaderboardController {
   })
   @Get('streak')
   @HttpCode(HttpStatus.OK)
-  getStreakLeaderboard(
-    @Query('hskLevel') hskLevel?: number,
-    @Query('timeframe') timeframe?: 'all' | 'month' | 'week',
-    @Query('limit') limit?: number,
-  ) {
-    return this.leaderboardService.getStreakLeaderboard({
-      hskLevel,
-      timeframe,
-      limit,
-    });
+  getStreakLeaderboard(@Query() query: LeaderboardQueryDto) {
+    return this.leaderboardService.getStreakLeaderboard(query);
   }
 }

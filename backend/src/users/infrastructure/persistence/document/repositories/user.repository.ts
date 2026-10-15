@@ -73,7 +73,16 @@ export class UsersDocumentRepository implements UserRepository {
   async findByEmail(email: User['email']): Promise<NullableType<User>> {
     if (!email) return null;
 
-    const userObject = await this.usersModel.findOne({ email });
+    const userObject = await this.usersModel.findOne({
+      email: email.toLowerCase(),
+    });
+    return userObject ? UserMapper.toDomain(userObject) : null;
+  }
+
+  async findByLogin(login: string): Promise<NullableType<User>> {
+    const userByEmail = await this.findByEmail(login);
+    if (userByEmail) return userByEmail;
+    const userObject = await this.usersModel.findOne({ username: login });
     return userObject ? UserMapper.toDomain(userObject) : null;
   }
 
@@ -95,7 +104,9 @@ export class UsersDocumentRepository implements UserRepository {
   }
 
   async update(id: User['id'], payload: Partial<User>): Promise<User | null> {
-    const clonedPayload = { ...payload };
+    const clonedPayload = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined),
+    );
     delete clonedPayload.id;
 
     const filter = { _id: id.toString() };
@@ -121,9 +132,5 @@ export class UsersDocumentRepository implements UserRepository {
     await this.usersModel.deleteOne({
       _id: id.toString(),
     });
-  }
-
-  async getMaxStudentCode(): Promise<number> {
-    return 0;
   }
 }

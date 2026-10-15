@@ -25,21 +25,19 @@ describe('Users Module', () => {
     const newUserChangedPassword = `new-secret`;
 
     beforeAll(async () => {
-      await request(app)
-        .post('/api/v1/auth/email/register')
+      const response = await request(app)
+        .post('/api/v1/users')
+        .auth(apiToken, { type: 'bearer' })
         .send({
           email: newUserEmail,
           password: newUserPassword,
           firstName: `First${Date.now()}`,
           lastName: 'E2E',
-        });
-
-      await request(app)
-        .post('/api/v1/auth/email/login')
-        .send({ email: newUserEmail, password: newUserPassword })
-        .then(({ body }) => {
-          newUser = body.user;
-        });
+          role: { id: RoleEnum.user },
+          status: { id: StatusEnum.active },
+        })
+        .expect(201);
+      newUser = response.body;
     });
 
     describe('User with "Admin" role', () => {

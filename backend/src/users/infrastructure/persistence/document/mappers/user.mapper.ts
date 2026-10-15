@@ -1,4 +1,5 @@
 import { User } from '../../../../domain/user';
+
 import { UserSchemaClass } from '../entities/user.schema';
 import { FileSchemaClass } from '../../../../../files/infrastructure/persistence/document/entities/file.schema';
 import { FileMapper } from '../../../../../files/infrastructure/persistence/document/mappers/file.mapper';
@@ -10,11 +11,20 @@ import { StatusSchema } from '../../../../../statuses/infrastructure/persistence
 export class UserMapper {
   static toDomain(raw: UserSchemaClass): User {
     const domainEntity = new User();
+    domainEntity.emailVerifiedAt = raw.emailVerifiedAt;
+
     domainEntity.id = raw._id.toString();
     domainEntity.email = raw.email;
     domainEntity.password = raw.password;
     domainEntity.provider = raw.provider;
     domainEntity.socialId = raw.socialId;
+    domainEntity.username = raw.username;
+    domainEntity.level = raw.level;
+    domainEntity.currentExp = raw.currentExp;
+    domainEntity.avatarFrame = raw.avatarFrame;
+    domainEntity.currentHskLevel = raw.currentHskLevel;
+    domainEntity.targetHskLevel = raw.targetHskLevel;
+    domainEntity.dailyStudyTime = raw.dailyStudyTime;
     if (raw.photo) {
       domainEntity.photo = FileMapper.toDomain(raw.photo);
     } else if (raw.photo === null) {
@@ -46,12 +56,14 @@ export class UserMapper {
       role._id = domainEntity.role.id.toString();
     }
 
-    let photo: FileSchemaClass | undefined = undefined;
+    let photo: FileSchemaClass | null | undefined = undefined;
 
     if (domainEntity.photo) {
       photo = new FileSchemaClass();
       photo._id = domainEntity.photo.id;
       photo.path = domainEntity.photo.path;
+    } else if (domainEntity.photo === null) {
+      photo = null;
     }
 
     let status: StatusSchema | undefined = undefined;
@@ -62,6 +74,8 @@ export class UserMapper {
     }
 
     const persistenceSchema = new UserSchemaClass();
+    persistenceSchema.emailVerifiedAt = domainEntity.emailVerifiedAt;
+
     if (domainEntity.id && typeof domainEntity.id === 'string') {
       persistenceSchema._id = domainEntity.id;
     }
@@ -69,6 +83,13 @@ export class UserMapper {
     persistenceSchema.password = domainEntity.password;
     persistenceSchema.provider = domainEntity.provider;
     persistenceSchema.socialId = domainEntity.socialId;
+    persistenceSchema.username = domainEntity.username;
+    persistenceSchema.level = domainEntity.level;
+    persistenceSchema.currentExp = domainEntity.currentExp;
+    persistenceSchema.avatarFrame = domainEntity.avatarFrame;
+    persistenceSchema.currentHskLevel = domainEntity.currentHskLevel;
+    persistenceSchema.targetHskLevel = domainEntity.targetHskLevel;
+    persistenceSchema.dailyStudyTime = domainEntity.dailyStudyTime;
     persistenceSchema.photo = photo;
     persistenceSchema.role = role;
     persistenceSchema.status = status;

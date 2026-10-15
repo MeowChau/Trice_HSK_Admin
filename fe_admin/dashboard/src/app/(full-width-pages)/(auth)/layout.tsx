@@ -21,7 +21,7 @@ export default function AuthLayout({
               {/* <!-- ===== Common Grid Shape Start ===== --> */}
               <GridShape />
               <div className="flex flex-col items-center max-w-xs">
-                <Link href="/" className="block mb-4">
+                <Link href="/" prefetch={false} className="block mb-4">
                   <Image
                     width={150}
                     height={150}
@@ -30,7 +30,9 @@ export default function AuthLayout({
                     className="rounded-full shadow-lg"
                   />
                 </Link>
-                <h1 className="text-3xl font-bold text-white mb-2 text-center">TriceHSK</h1>
+                <h1 className="text-3xl font-bold text-white mb-2 text-center">
+                  TriceHSK
+                </h1>
                 <p className="text-center text-gray-400 dark:text-white/80 text-lg">
                   Hệ thống quản trị
                 </p>

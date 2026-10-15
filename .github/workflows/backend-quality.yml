@@ -1,0 +1,54 @@
+name: Backend quality
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: backend_test
+          POSTGRES_PASSWORD: backend_test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U backend_test -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: backend/.nvmrc
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: node ../deploy/check-admin-credentials.cjs
+      - run: node --test test/utils/prepare-test-credentials.test.cjs
+      - run: npm run check
+      - run: npm run test:integration
+        env:
+          TEST_DATABASE_URL: postgresql://backend_test:backend_test@127.0.0.1:5432/postgres
+      - run: node --test ../deploy/tests/workbook-import.test.cjs
+        env:
+          TEST_DATABASE_URL: postgresql://backend_test:backend_test@127.0.0.1:5432/postgres
+      - run: node --test ../deploy/tests/hsk1-exam.test.cjs
+        env:
+          TEST_DATABASE_URL: postgresql://backend_test:backend_test@127.0.0.1:5432/postgres
+      - run: node --test ../deploy/tests/query-performance.test.cjs
+        env:
+          TEST_DATABASE_URL: postgresql://backend_test:backend_test@127.0.0.1:5432/postgres

@@ -14,9 +14,9 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": false,
     "noImplicitAny": true,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true
   },
   "include": ["src/**/*", "test/**/*", ".install-scripts/**/*"]

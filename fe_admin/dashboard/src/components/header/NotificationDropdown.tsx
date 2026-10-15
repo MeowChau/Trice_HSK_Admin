@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { DropdownItem } from "../ui/dropdown/DropdownItem";
+
 import Badge from "../ui/badge/Badge";
 import { apiFetch } from "@/lib/api";
 import {
@@ -13,13 +13,16 @@ import {
   ShootingStarIcon,
   CheckCircleIcon,
   FolderIcon,
-  TimeIcon,
-  BellIcon,
 } from "@/icons";
 
 interface NotificationItem {
   id: string;
-  type: "PENDING_STUDENT" | "QUESTION_ACTIVITY" | "EXAM_ACTIVITY" | "LEADERBOARD_STREAK" | "SYSTEM";
+  type:
+    | "PENDING_STUDENT"
+    | "QUESTION_ACTIVITY"
+    | "EXAM_ACTIVITY"
+    | "LEADERBOARD_STREAK"
+    | "SYSTEM";
   title: string;
   message: string;
   time: string;
@@ -50,7 +53,9 @@ export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [readIds, setReadIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "ACADEMIC">("ALL");
+  const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "ACADEMIC">(
+    "ALL",
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   // Load readIds from localStorage
@@ -76,13 +81,27 @@ export default function NotificationDropdown() {
       // 1. Fetch pending students
       try {
         const filterStr = JSON.stringify({ statuses: [{ id: 3 }] });
-        const resUsers = await apiFetch(`users?page=1&limit=4&filters=${encodeURIComponent(filterStr)}`);
+        const resUsers = await apiFetch(
+          `users?page=1&limit=4&filters=${encodeURIComponent(filterStr)}`,
+        );
         if (resUsers.ok) {
           const jsonUsers = await resUsers.json();
-          const usersList = jsonUsers.data || [];
-          usersList.forEach((u: any) => {
+          const usersList: {
+            id: string | number;
+            firstName?: string;
+            fullName?: string;
+            username?: string;
+            studentCode?: number;
+            currentHskLevel?: number;
+            createdAt?: string;
+          }[] = jsonUsers.data || [];
+          usersList.forEach((u) => {
             const id = `pending-student-${u.id}`;
-            const studentName = u.firstName || u.fullName || u.username || `HV-${u.studentCode || u.id}`;
+            const studentName =
+              u.firstName ||
+              u.fullName ||
+              u.username ||
+              `HV-${u.studentCode || u.id}`;
             items.push({
               id,
               type: "PENDING_STUDENT",
@@ -107,8 +126,16 @@ export default function NotificationDropdown() {
         const resLogs = await apiFetch("audit-logs?page=1&limit=6");
         if (resLogs.ok) {
           const jsonLogs = await resLogs.json();
-          const logsList = jsonLogs.data || [];
-          logsList.forEach((log: any) => {
+          const logsList: {
+            id: number;
+            entityType: string;
+            action: string;
+            summary?: string;
+            userName?: string;
+            entityId: string;
+            createdAt?: string;
+          }[] = jsonLogs.data || [];
+          logsList.forEach((log) => {
             const id = `audit-log-${log.id}`;
             let link = "/audit-logs";
             let badgeText = "Hoạt động";
@@ -135,8 +162,15 @@ export default function NotificationDropdown() {
             items.push({
               id,
               type,
-              title: log.action === "CREATE" ? "Hoạt động thêm mới" : log.action === "UPDATE" ? "Hoạt động cập nhật" : "Thay đổi hệ thống",
-              message: log.summary || `${log.userName || "Admin"} thao tác trên ${log.entityType}`,
+              title:
+                log.action === "CREATE"
+                  ? "Hoạt động thêm mới"
+                  : log.action === "UPDATE"
+                    ? "Hoạt động cập nhật"
+                    : "Thay đổi hệ thống",
+              message:
+                log.summary ||
+                `${log.userName || "Admin"} thao tác trên ${log.entityType}`,
               time: formatRelativeTime(log.createdAt || Date.now()),
               timestamp: new Date(log.createdAt || Date.now()).getTime(),
               link,
@@ -157,7 +191,8 @@ export default function NotificationDropdown() {
           id: "sys-welcome",
           type: "SYSTEM",
           title: "Hệ thống Trice HSK sẵn sàng",
-          message: "Chào mừng bạn đến với trung tâm điều hành quản trị Trice HSK.",
+          message:
+            "Chào mừng bạn đến với trung tâm điều hành quản trị Trice HSK.",
           time: "Vừa xong",
           timestamp: Date.now(),
           link: "/questions",
@@ -206,7 +241,8 @@ export default function NotificationDropdown() {
     return notifications.filter((item) => {
       if (activeTab === "ALL") return true;
       if (activeTab === "PENDING") return item.category === "PENDING";
-      if (activeTab === "ACADEMIC") return item.category === "ACADEMIC" || item.category === "SYSTEM";
+      if (activeTab === "ACADEMIC")
+        return item.category === "ACADEMIC" || item.category === "SYSTEM";
       return true;
     });
   }, [notifications, activeTab]);
@@ -374,7 +410,8 @@ export default function NotificationDropdown() {
                 : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             }`}
           >
-            Chờ duyệt ({notifications.filter((n) => n.category === "PENDING").length})
+            Chờ duyệt (
+            {notifications.filter((n) => n.category === "PENDING").length})
           </button>
           <button
             type="button"
@@ -385,7 +422,8 @@ export default function NotificationDropdown() {
                 : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             }`}
           >
-            Học thuật ({notifications.filter((n) => n.category === "ACADEMIC").length})
+            Học thuật (
+            {notifications.filter((n) => n.category === "ACADEMIC").length})
           </button>
         </div>
 
@@ -399,7 +437,9 @@ export default function NotificationDropdown() {
           ) : displayedNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-center text-gray-400 dark:text-gray-500">
               <CheckCircleIcon className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-1" />
-              <p className="text-xs font-medium">Không có thông báo nào trong mục này</p>
+              <p className="text-xs font-medium">
+                Không có thông báo nào trong mục này
+              </p>
             </div>
           ) : (
             displayedNotifications.map((item) => {

@@ -27,15 +27,21 @@
 
 By default boilerplate used sign in and sign up via email and password.
 
+Registration creates a pending account. Email confirmation records `emailVerifiedAt` and leaves approval to an administrator. Email and social login require an active account; refresh also rejects inactive accounts. Login accepts an email or username, with an exact email match taking priority.
+
+Confirmation links include their purpose and the account email. Existing links without this payload are rejected. `POST /api/v1/auth/email/resend` accepts `{ "email": "student@example.com" }` and sends a current link for an unverified email account. It returns 204 for unknown, verified, and social accounts as well. Admin email changes clear previous verification; self-service changes confirm the new email first.
+
 ```mermaid
 sequenceDiagram
     participant A as Fronted App (Web, Mobile, Desktop)
     participant B as Backend App
 
     A->>B: 1. Sign up via email and password
-    A->>B: 2. Sign in via email and password
-    B->>A: 3. Get a JWT token
-    A->>B: 4. Make any requests using a JWT token
+    A->>B: 2. Confirm email using the emailed link
+    Note over B: Administrator approves the pending account
+    A->>B: 3. Sign in via email or username and password
+    B->>A: 4. Get a JWT token
+    A->>B: 5. Make requests using a JWT token
 ```
 
 <https://user-images.githubusercontent.com/6001723/224566194-1c1f4e98-5691-4703-b30e-92f99ec5d929.mp4>
@@ -43,6 +49,8 @@ sequenceDiagram
 ### Auth via external services or social networks flow
 
 Also you can sign up via another external services or social networks like Apple, Facebook and Google.
+
+The first social login creates a pending account and returns `accountNotActive` until approval. A verified provider email is stored with its verification time. Existing inactive accounts do not have their provider changed during rejected logins.
 
 ```mermaid
 sequenceDiagram
@@ -91,6 +99,8 @@ For auth with external services or social networks you need:
 
 > The app refuses to start with `NODE_ENV=production` while any `AUTH_*_SECRET` still has the placeholder value from `env-example-*`. In development it only logs a warning.
 
+Sensitive authentication endpoints use `ThrottlerGuard`. `AUTH_RATE_LIMIT` controls requests per IP and endpoint per minute, defaults to 10, and accepts 1–10000. The default storage is local to each process; deployments with several instances need shared throttler storage. The relational Docker test configuration sets this to 1000 to allow the E2E suite's repeated logins.
+
 ## Auth via Apple
 
 1. [Set up your service on Apple](https://www.npmjs.com/package/apple-signin-auth)
@@ -127,7 +137,7 @@ For auth with external services or social networks you need:
 
 ## About JWT strategy
 
-In the `validate` method of the `src/auth/strategies/jwt.strategy.ts` file, you can see that we do not check if the user exists in the database because it is redundant, it may lose the benefits of the JWT approach and can affect the application performance.
+`src/auth/strategies/jwt.strategy.ts` validates the session and loads the current account on each authenticated request. Missing sessions and deleted accounts are rejected with 401. The request identity uses the current role and status from the database, so permission changes take effect without waiting for token expiration. Routes protected by `ActiveGuard` reject inactive accounts with 403. This requires database reads for authentication.
 
 To better understand how JWT works, watch the video explanation https://www.youtube.com/watch?v=Y2H3DXDeS3Q and read this article https://jwt.io/introduction/
 
@@ -247,7 +257,7 @@ Security defaults the boilerplate ships with, and what is intentionally left to 
 
 ### After `POST /api/v1/auth/logout` or removing session from the database, the user can still make requests with an `access token` for some time. Why?
 
-It's because we use `JWT`. `JWTs` are stateless, so we can't revoke them, but don't worry, this is the correct behavior and the access token will expire after the time specified in `AUTH_JWT_TOKEN_EXPIRES_IN` (the default value is 15 minutes). If you still need to revoke `JWT` tokens immediately, you can check if a session exists in [jwt.strategy.ts](https://github.com/brocoders/nestjs-boilerplate/blob/2896589f52d2df025f12069ba82ba4fac1db8ebd/src/auth/strategies/jwt.strategy.ts#L20-L26) on each request. However, it's not recommended because it can affect the application's performance.
+This project now checks sessions in `jwt.strategy.ts`. After logout or session removal, the next authenticated request returns 401, even if the access token has not expired. Admin password changes and temporary password issuance revoke existing sessions; self-service password changes retain the current session and revoke the others. Requests already in progress can finish.
 
 ---
 

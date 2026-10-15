@@ -1,4 +1,6 @@
 "use client";
+import { HSK_COLORS } from "@/constants/hsk";
+import { errorMessage } from "@/lib/error-message";
 
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
@@ -14,14 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import {
-  PlusIcon,
-  EyeIcon,
-  TrashBinIcon,
-  FolderIcon,
-  PencilIcon,
-  CheckCircleIcon,
-} from "@/icons";
+import { PlusIcon, EyeIcon, FolderIcon, PencilIcon } from "@/icons";
 
 export interface TopicItem {
   id: string;
@@ -49,18 +44,6 @@ export interface VocabItem {
   topic?: string | null;
 }
 
-const HSK_COLORS: Record<number, { bg: string; text: string; border: string }> = {
-  1: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-200 dark:border-emerald-800" },
-  2: { bg: "bg-teal-50 dark:bg-teal-500/10", text: "text-teal-600 dark:text-teal-400", border: "border-teal-200 dark:border-teal-800" },
-  3: { bg: "bg-sky-50 dark:bg-sky-500/10", text: "text-sky-600 dark:text-sky-400", border: "border-sky-200 dark:border-sky-800" },
-  4: { bg: "bg-indigo-50 dark:bg-indigo-500/10", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-200 dark:border-indigo-800" },
-  5: { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", border: "border-amber-200 dark:border-amber-800" },
-  6: { bg: "bg-rose-50 dark:bg-rose-500/10", text: "text-rose-600 dark:text-rose-400", border: "border-rose-200 dark:border-rose-800" },
-  7: { bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", border: "border-purple-200 dark:border-purple-800" },
-  8: { bg: "bg-fuchsia-50 dark:bg-fuchsia-500/10", text: "text-fuchsia-600 dark:text-fuchsia-400", border: "border-fuchsia-200 dark:border-fuchsia-800" },
-  9: { bg: "bg-violet-50 dark:bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", border: "border-violet-200 dark:border-violet-800" },
-};
-
 export default function TopicList() {
   const router = useRouter();
   const [topics, setTopics] = useState<TopicItem[]>([]);
@@ -86,8 +69,12 @@ export default function TopicList() {
   const [detailTopic, setDetailTopic] = useState<TopicItem | null>(null);
 
   // Vocab Management Modal for a Topic
-  const [vocabManageTopic, setVocabManageTopic] = useState<TopicItem | null>(null);
-  const [vocabTab, setVocabTab] = useState<"current" | "assign" | "create">("current");
+  const [vocabManageTopic, setVocabManageTopic] = useState<TopicItem | null>(
+    null,
+  );
+  const [vocabTab, setVocabTab] = useState<"current" | "assign" | "create">(
+    "current",
+  );
   const [topicVocabs, setTopicVocabs] = useState<VocabItem[]>([]);
   const [isLoadingTopicVocabs, setIsLoadingTopicVocabs] = useState(false);
 
@@ -95,7 +82,9 @@ export default function TopicList() {
   const [candidateVocabs, setCandidateVocabs] = useState<VocabItem[]>([]);
   const [candidateSearch, setCandidateSearch] = useState("");
   const [candidateOnlyUnassigned, setCandidateOnlyUnassigned] = useState(true);
-  const [selectedCandidateIds, setSelectedCandidateIds] = useState<number[]>([]);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<number[]>(
+    [],
+  );
   const [isAssigning, setIsAssigning] = useState(false);
 
   // Quick create vocab in topic
@@ -113,8 +102,8 @@ export default function TopicList() {
       }
       const data = await res.json();
       setTopics(data || []);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Không thể tải danh sách chủ đề.");
+    } catch (err) {
+      setErrorMsg(errorMessage(err, "") || "Không thể tải danh sách chủ đề.");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -128,7 +117,8 @@ export default function TopicList() {
   // Filtered topics
   const filteredTopics = useMemo(() => {
     return topics.filter((t) => {
-      const matchHsk = selectedHsk === "ALL" || t.hskLevel === Number(selectedHsk);
+      const matchHsk =
+        selectedHsk === "ALL" || t.hskLevel === Number(selectedHsk);
       const term = searchTerm.trim().toLowerCase();
       const matchSearch =
         !term ||
@@ -142,7 +132,7 @@ export default function TopicList() {
 
   // KPI stats
   const totalTopics = topics.length;
-  const totalVocabInTopics = topics.reduce((acc, t) => acc + (t.vocabularyCount || 0), 0);
+
   const hsk1Topics = topics.filter((t) => t.hskLevel === 1).length;
   const hsk2Topics = topics.filter((t) => t.hskLevel === 2).length;
   const hsk3Topics = topics.filter((t) => t.hskLevel === 3).length;
@@ -206,8 +196,8 @@ export default function TopicList() {
                 icon: formIcon.trim(),
                 hskLevel: Number(formHskLevel),
               }
-            : t
-        )
+            : t,
+        ),
       );
     }
     setIsModalOpen(false);
@@ -224,7 +214,9 @@ export default function TopicList() {
   const loadTopicVocabs = async (topicKey: string) => {
     setIsLoadingTopicVocabs(true);
     try {
-      const res = await apiFetch(`vocabulary?topic=${encodeURIComponent(topicKey)}&limit=100`);
+      const res = await apiFetch(
+        `vocabulary?topic=${encodeURIComponent(topicKey)}&limit=100`,
+      );
       if (res.ok) {
         const json = await res.json();
         setTopicVocabs(json.data || []);
@@ -237,7 +229,11 @@ export default function TopicList() {
   };
 
   // Load candidate vocabs for assignment
-  const loadCandidateVocabs = async (hskLevel: number, onlyUnassigned: boolean, search: string) => {
+  const loadCandidateVocabs = async (
+    hskLevel: number,
+    onlyUnassigned: boolean,
+    search: string,
+  ) => {
     try {
       let url = `vocabulary?hskLevel=${hskLevel}&limit=50`;
       if (onlyUnassigned) {
@@ -258,13 +254,21 @@ export default function TopicList() {
 
   useEffect(() => {
     if (vocabManageTopic && vocabTab === "assign") {
-      loadCandidateVocabs(vocabManageTopic.hskLevel, candidateOnlyUnassigned, candidateSearch);
+      loadCandidateVocabs(
+        vocabManageTopic.hskLevel,
+        candidateOnlyUnassigned,
+        candidateSearch,
+      );
     }
-  }, [vocabManageTopic, vocabTab, candidateOnlyUnassigned]);
+  }, [vocabManageTopic, vocabTab, candidateOnlyUnassigned, candidateSearch]);
 
   const handleSearchCandidates = () => {
     if (vocabManageTopic) {
-      loadCandidateVocabs(vocabManageTopic.hskLevel, candidateOnlyUnassigned, candidateSearch);
+      loadCandidateVocabs(
+        vocabManageTopic.hskLevel,
+        candidateOnlyUnassigned,
+        candidateSearch,
+      );
     }
   };
 
@@ -364,12 +368,17 @@ export default function TopicList() {
             </h1>
           </div>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Khung bài học chuẩn bám sát sách bài tập HSK 1 - 3 (HSK 3.0). Quản lý bài tập 4 kỹ năng và phân bổ từ vựng theo từng bài.
+            Khung bài học chuẩn bám sát sách bài tập HSK 1 - 3 (HSK 3.0). Quản
+            lý bài tập 4 kỹ năng và phân bổ từ vựng theo từng bài.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/data/vocabulary">
-            <Button variant="outline" size="sm" startIcon={<span className="text-base">📖</span>}>
+            <Button
+              variant="outline"
+              size="sm"
+              startIcon={<span className="text-base">📖</span>}
+            >
               Kho từ vựng toàn diện
             </Button>
           </Link>
@@ -399,23 +408,30 @@ export default function TopicList() {
         {/* Total Topics */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Tổng số bài học</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Tổng số bài học
+            </span>
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
               <FolderIcon className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              {totalTopics} <span className="text-sm font-normal text-gray-400">bài</span>
+              {totalTopics}{" "}
+              <span className="text-sm font-normal text-gray-400">bài</span>
             </span>
-            <Badge variant="light" color="primary" size="sm">Giáo trình chuẩn</Badge>
+            <Badge variant="light" color="primary" size="sm">
+              Giáo trình chuẩn
+            </Badge>
           </div>
         </div>
 
         {/* HSK 1 Lessons */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">HSK 1 (15 Bài học)</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              HSK 1 (15 Bài học)
+            </span>
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10">
               <span className="text-lg">👋</span>
             </div>
@@ -431,7 +447,9 @@ export default function TopicList() {
         {/* HSK 2 Lessons */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">HSK 2 (15 Bài học)</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              HSK 2 (15 Bài học)
+            </span>
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-50 text-teal-500 dark:bg-teal-500/10">
               <span className="text-lg">🚕</span>
             </div>
@@ -447,7 +465,9 @@ export default function TopicList() {
         {/* HSK 3 Lessons */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">HSK 3 (18 Bài học)</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              HSK 3 (18 Bài học)
+            </span>
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sky-50 text-sky-500 dark:bg-sky-500/10">
               <span className="text-lg">🛫</span>
             </div>
@@ -478,7 +498,12 @@ export default function TopicList() {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
 
@@ -523,7 +548,8 @@ export default function TopicList() {
             </span>
           </div>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            * Bấm vào nút "Đẩy từ vựng" để gán từ vựng từ kho HSK vào bài học này
+            * Bấm vào nút &quot;Đẩy từ vựng&quot; để gán từ vựng từ kho HSK vào
+            bài học này
           </span>
         </div>
 
@@ -537,19 +563,34 @@ export default function TopicList() {
           <Table>
             <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
-                <TableCell isHeader className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Bài học & Cấp độ
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Tiêu đề sách giáo trình (Hán tự & Pinyin)
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Từ vựng bài học
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Bài tập 4 kỹ năng
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                >
                   Thao tác
                 </TableCell>
               </TableRow>
@@ -557,16 +598,24 @@ export default function TopicList() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-400 dark:text-gray-500" {...({ colSpan: 5 } as any)}>
+                  <TableCell
+                    className="px-5 py-12 text-center text-gray-400 dark:text-gray-500"
+                    colSpan={5}
+                  >
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">Đang tải danh mục bài học...</span>
+                      <span className="text-sm">
+                        Đang tải danh mục bài học...
+                      </span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : filteredTopics.length === 0 ? (
                 <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-400 dark:text-gray-500" {...({ colSpan: 5 } as any)}>
+                  <TableCell
+                    className="px-5 py-12 text-center text-gray-400 dark:text-gray-500"
+                    colSpan={5}
+                  >
                     <div className="flex flex-col items-center justify-center gap-2">
                       <FolderIcon className="w-10 h-10 text-gray-300 dark:text-gray-600" />
                       <p className="text-base font-medium text-gray-600 dark:text-gray-400">
@@ -593,7 +642,9 @@ export default function TopicList() {
                               {t.titleVi}
                             </span>
                             <div className="flex items-center gap-2">
-                              <span className={`inline-flex items-center justify-center font-bold text-[10px] px-2 py-0.5 rounded border ${hskStyle.bg} ${hskStyle.text} ${hskStyle.border}`}>
+                              <span
+                                className={`inline-flex items-center justify-center font-bold text-[10px] px-2 py-0.5 rounded border ${hskStyle.bg} ${hskStyle.text} ${hskStyle.border}`}
+                              >
                                 HSK {t.hskLevel}
                               </span>
                               <span className="text-xs font-mono font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
@@ -633,7 +684,9 @@ export default function TopicList() {
                       {/* 4 Skills Distribution Badges */}
                       <TableCell className="px-5 py-4 text-center whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
-                          <Link href={`/data/listening?topic=${encodeURIComponent(t.topicKey)}`}>
+                          <Link
+                            href={`/data/listening?topic=${encodeURIComponent(t.topicKey)}`}
+                          >
                             <span
                               title="Bài nghe"
                               className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
@@ -645,7 +698,9 @@ export default function TopicList() {
                               🎧 {t.listeningCount}
                             </span>
                           </Link>
-                          <Link href={`/data/speaking?topic=${encodeURIComponent(t.topicKey)}`}>
+                          <Link
+                            href={`/data/speaking?topic=${encodeURIComponent(t.topicKey)}`}
+                          >
                             <span
                               title="Bài nói (HSKK)"
                               className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
@@ -657,7 +712,9 @@ export default function TopicList() {
                               🎙️ {t.speakingCount}
                             </span>
                           </Link>
-                          <Link href={`/data/reading?topic=${encodeURIComponent(t.topicKey)}`}>
+                          <Link
+                            href={`/data/reading?topic=${encodeURIComponent(t.topicKey)}`}
+                          >
                             <span
                               title="Bài đọc hiểu"
                               className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
@@ -669,7 +726,9 @@ export default function TopicList() {
                               📖 {t.readingCount}
                             </span>
                           </Link>
-                          <Link href={`/data/writing?topic=${encodeURIComponent(t.topicKey)}`}>
+                          <Link
+                            href={`/data/writing?topic=${encodeURIComponent(t.topicKey)}`}
+                          >
                             <span
                               title="Bài viết"
                               className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
@@ -741,7 +800,8 @@ export default function TopicList() {
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
-                  {vocabManageTopic.titleCn} ({vocabManageTopic.pinyin}) • Mã bài: {vocabManageTopic.topicKey}
+                  {vocabManageTopic.titleCn} ({vocabManageTopic.pinyin}) • Mã
+                  bài: {vocabManageTopic.topicKey}
                 </p>
               </div>
 
@@ -751,7 +811,7 @@ export default function TopicList() {
                   size="sm"
                   onClick={() => {
                     router.push(
-                      `/data/vocabulary?hsk=${vocabManageTopic.hskLevel}&topic=${vocabManageTopic.topicKey}`
+                      `/data/vocabulary?hsk=${vocabManageTopic.hskLevel}&topic=${vocabManageTopic.topicKey}`,
                     );
                     setVocabManageTopic(null);
                   }}
@@ -799,7 +859,9 @@ export default function TopicList() {
             {vocabTab === "current" && (
               <div className="space-y-3">
                 {isLoadingTopicVocabs ? (
-                  <div className="py-8 text-center text-sm text-gray-400">Đang tải danh sách từ vựng...</div>
+                  <div className="py-8 text-center text-sm text-gray-400">
+                    Đang tải danh sách từ vựng...
+                  </div>
                 ) : topicVocabs.length === 0 ? (
                   <div className="py-8 text-center space-y-3">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -851,7 +913,9 @@ export default function TopicList() {
                     type="text"
                     value={candidateSearch}
                     onChange={(e) => setCandidateSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearchCandidates()}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleSearchCandidates()
+                    }
                     placeholder="Tìm theo chữ Hán, Pinyin, nghĩa..."
                     className="flex-1 h-10 px-3.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                   />
@@ -860,12 +924,18 @@ export default function TopicList() {
                       <input
                         type="checkbox"
                         checked={candidateOnlyUnassigned}
-                        onChange={(e) => setCandidateOnlyUnassigned(e.target.checked)}
+                        onChange={(e) =>
+                          setCandidateOnlyUnassigned(e.target.checked)
+                        }
                         className="rounded text-brand-600"
                       />
                       Chỉ từ chưa gán
                     </label>
-                    <Button size="sm" variant="outline" onClick={handleSearchCandidates}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSearchCandidates}
+                    >
                       Tìm kiếm
                     </Button>
                   </div>
@@ -874,7 +944,8 @@ export default function TopicList() {
                 <div className="max-h-72 overflow-y-auto border border-gray-200 rounded-xl dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
                   {candidateVocabs.length === 0 ? (
                     <div className="py-6 text-center text-xs text-gray-400">
-                      Không tìm thấy từ vựng nào trong kho HSK {vocabManageTopic.hskLevel}
+                      Không tìm thấy từ vựng nào trong kho HSK{" "}
+                      {vocabManageTopic.hskLevel}
                     </div>
                   ) : (
                     candidateVocabs.map((v) => {
@@ -890,10 +961,15 @@ export default function TopicList() {
                               checked={isChecked}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  setSelectedCandidateIds([...selectedCandidateIds, v.id]);
+                                  setSelectedCandidateIds([
+                                    ...selectedCandidateIds,
+                                    v.id,
+                                  ]);
                                 } else {
                                   setSelectedCandidateIds(
-                                    selectedCandidateIds.filter((id) => id !== v.id)
+                                    selectedCandidateIds.filter(
+                                      (id) => id !== v.id,
+                                    ),
                                   );
                                 }
                               }}
@@ -926,7 +1002,8 @@ export default function TopicList() {
 
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-xs text-gray-500">
-                    Đã chọn: <strong>{selectedCandidateIds.length}</strong> từ vựng
+                    Đã chọn: <strong>{selectedCandidateIds.length}</strong> từ
+                    vựng
                   </span>
                   <Button
                     size="sm"
@@ -947,7 +1024,8 @@ export default function TopicList() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Chữ Hán (Tiếng Trung) <span className="text-rose-500">*</span>
+                      Chữ Hán (Tiếng Trung){" "}
+                      <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -996,7 +1074,11 @@ export default function TopicList() {
             )}
 
             <div className="flex justify-end pt-3 border-t border-gray-100 dark:border-gray-800">
-              <Button variant="outline" size="sm" onClick={() => setVocabManageTopic(null)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setVocabManageTopic(null)}
+              >
                 Đóng
               </Button>
             </div>
@@ -1013,10 +1095,13 @@ export default function TopicList() {
         <form onSubmit={handleSaveTopic} className="space-y-5">
           <div className="pb-3 border-b border-gray-100 dark:border-gray-800">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              {modalMode === "CREATE" ? "Thêm bài học giáo trình mới" : `Sửa bài học: ${formTopicKey}`}
+              {modalMode === "CREATE"
+                ? "Thêm bài học giáo trình mới"
+                : `Sửa bài học: ${formTopicKey}`}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Bài học bám sát nội dung sách bài tập và phân loại từ vựng, bài tập kỹ năng
+              Bài học bám sát nội dung sách bài tập và phân loại từ vựng, bài
+              tập kỹ năng
             </p>
           </div>
 
@@ -1141,7 +1226,8 @@ export default function TopicList() {
                 {detailTopic.titleVi}
               </h3>
               <p className="text-sm font-semibold text-brand-600 dark:text-brand-400">
-                {detailTopic.titleCn} {detailTopic.pinyin ? `(${detailTopic.pinyin})` : ""}
+                {detailTopic.titleCn}{" "}
+                {detailTopic.pinyin ? `(${detailTopic.pinyin})` : ""}
               </p>
               <div className="flex items-center justify-center gap-2">
                 <Badge variant="light" color="primary" size="sm">

@@ -1,4 +1,7 @@
 "use client";
+import { useCallback } from "react";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import type { UserFilters } from "@/lib/api-types";
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -17,6 +20,7 @@ import {
 import Badge from "@/components/ui/badge/Badge";
 import Alert from "@/components/ui/alert/Alert";
 import { apiFetch, readApiError, API_BASE_URL } from "@/lib/api";
+import { resolveFileUrl } from "@/lib/media-url";
 
 interface Status {
   id: number;
@@ -42,6 +46,7 @@ interface TeacherRow {
 }
 
 export default function TeacherList() {
+  const requests = useLatestRequest();
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -68,7 +73,7 @@ export default function TeacherList() {
 
   const showAlert = (
     message: string,
-    variant: "success" | "error" | "warning" | "info" = "success"
+    variant: "success" | "error" | "warning" | "info" = "success",
   ) => {
     setAlertMsg({ isOpen: true, message, variant });
     setTimeout(() => setAlertMsg((prev) => ({ ...prev, isOpen: false })), 4000);
@@ -77,7 +82,7 @@ export default function TeacherList() {
   const showConfirm = (
     title: string,
     message: string,
-    onConfirm: () => void
+    onConfirm: () => void,
   ) => {
     setConfirmDialog({ isOpen: true, title, message, onConfirm });
   };
@@ -91,7 +96,9 @@ export default function TeacherList() {
   const [hasNextPage, setHasNextPage] = useState(false);
 
   // Dropdown menu state per row
-  const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(
+    null,
+  );
 
   // Add Teacher Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -107,23 +114,28 @@ export default function TeacherList() {
 
   // Edit Teacher Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingTeacherId, setEditingTeacherId] = useState<string | number | null>(null);
+  const [editingTeacherId, setEditingTeacherId] = useState<
+    string | number | null
+  >(null);
   const [editEmail, setEditEmail] = useState("");
   const [editFullName, setEditFullName] = useState("");
   const [editPosition, setEditPosition] = useState("Bậc 1");
   const [editSelectedFile, setEditSelectedFile] = useState<File | null>(null);
-  const [editPreviewAvatar, setEditPreviewAvatar] = useState<string | null>(null);
+  const [editPreviewAvatar, setEditPreviewAvatar] = useState<string | null>(
+    null,
+  );
   const [editRemovePhoto, setEditRemovePhoto] = useState(false);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch teachers list (RoleEnum.teacher = 3)
-  const fetchTeachers = async () => {
+  const fetchTeachers = useCallback(async () => {
+    const request = requests.start();
     setIsLoading(true);
     try {
       let queryUrl = `users?page=${page}&limit=${limit}`;
 
-      const filtersObj: any = {
+      const filtersObj: UserFilters = {
         roles: [{ id: 3 }], // Giáo viên có role ID = 3
       };
 
@@ -140,7 +152,8 @@ export default function TeacherList() {
       queryUrl += `&filters=${encodeURIComponent(JSON.stringify(filtersObj))}`;
 
       // Sorting
-      let sortParams = '[{"orderBy":"status","order":"ASC"},{"orderBy":"createdAt","order":"DESC"}]';
+      let sortParams =
+        '[{"orderBy":"status","order":"ASC"},{"orderBy":"createdAt","order":"DESC"}]';
       if (sortBy === "name_asc") {
         sortParams = '[{"orderBy":"fullName","order":"ASC"}]';
       } else if (sortBy === "email_asc") {
@@ -149,6 +162,7 @@ export default function TeacherList() {
       queryUrl += `&sort=${encodeURIComponent(sortParams)}`;
 
       const res = await apiFetch(queryUrl, {
+        signal: request.signal,
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache",
@@ -158,22 +172,26 @@ export default function TeacherList() {
 
       if (res.ok) {
         const data = await res.json();
+        if (!request.isCurrent()) return;
         setTeachers(data.data || []);
         setHasNextPage(Boolean(data.hasNextPage));
       } else {
         showAlert("Không thể tải danh sách giảng viên", "error");
       }
     } catch (err) {
+      if (!request.isCurrent()) return;
       console.error("Failed to fetch teachers", err);
       showAlert("Đã có lỗi xảy ra khi tải dữ liệu", "error");
     } finally {
-      setIsLoading(false);
+      if (request.isCurrent()) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [requests, page, limit, sortBy, filterPosition, filterStatus]);
 
   useEffect(() => {
     fetchTeachers();
-  }, [page, sortBy, filterPosition, filterStatus]);
+  }, [fetchTeachers]);
 
   // Handle avatar file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,7 +215,9 @@ export default function TeacherList() {
   };
 
   // Submit new teacher
-  const handleCreateTeacher = async (e?: React.FormEvent | React.MouseEvent) => {
+  const handleCreateTeacher = async (
+    e?: React.FormEvent | React.MouseEvent,
+  ) => {
     if (e) e.preventDefault();
 
     if (!newEmail.trim()) {
@@ -241,7 +261,14 @@ export default function TeacherList() {
       }
 
       // 2. Call admin teacher creation endpoint
-      const payload: any = {
+      const payload: {
+        email: string;
+        username: string;
+        fullName: string;
+        position: string;
+        password?: string;
+        photo?: { id: string } | null;
+      } = {
         email: newEmail.trim(),
         username: newEmail.trim(), // Thay hẳn bằng email giảng viên
         fullName: newFullName.trim(),
@@ -279,7 +306,10 @@ export default function TeacherList() {
   };
 
   // Handle Action: Hủy (Cancel/Deactivate) & Cấp mật khẩu tạm thời (Issue temp password)
-  const handleAction = async (teacher: TeacherRow, action: "cancel" | "reactivate" | "temp_password") => {
+  const handleAction = async (
+    teacher: TeacherRow,
+    action: "cancel" | "reactivate" | "temp_password",
+  ) => {
     setOpenDropdownId(null);
 
     const displayName = teacher.fullName || teacher.email || teacher.username;
@@ -297,7 +327,10 @@ export default function TeacherList() {
             });
 
             if (res.ok) {
-              showAlert(`Đã hủy tài khoản giảng viên "${displayName}" thành công`, "success");
+              showAlert(
+                `Đã hủy tài khoản giảng viên "${displayName}" thành công`,
+                "success",
+              );
               fetchTeachers();
             } else {
               showAlert("Lỗi: " + (await readApiError(res)), "error");
@@ -306,7 +339,7 @@ export default function TeacherList() {
             console.error(err);
             showAlert("Đã có lỗi xảy ra khi hủy tài khoản", "error");
           }
-        }
+        },
       );
     } else if (action === "reactivate") {
       showConfirm(
@@ -321,7 +354,10 @@ export default function TeacherList() {
             });
 
             if (res.ok) {
-              showAlert(`Đã kích hoạt lại tài khoản giảng viên "${displayName}"`, "success");
+              showAlert(
+                `Đã kích hoạt lại tài khoản giảng viên "${displayName}"`,
+                "success",
+              );
               fetchTeachers();
             } else {
               showAlert("Lỗi: " + (await readApiError(res)), "error");
@@ -330,7 +366,7 @@ export default function TeacherList() {
             console.error(err);
             showAlert("Đã có lỗi xảy ra khi kích hoạt tài khoản", "error");
           }
-        }
+        },
       );
     } else if (action === "temp_password") {
       showConfirm(
@@ -350,13 +386,16 @@ export default function TeacherList() {
                 tempPassword: data.tempPassword,
               });
             } else {
-              showAlert("Lỗi cấp mật khẩu: " + (await readApiError(res)), "error");
+              showAlert(
+                "Lỗi cấp mật khẩu: " + (await readApiError(res)),
+                "error",
+              );
             }
           } catch (err) {
             console.error(err);
             showAlert("Đã có lỗi xảy ra khi cấp mật khẩu", "error");
           }
-        }
+        },
       );
     }
   };
@@ -375,13 +414,7 @@ export default function TeacherList() {
   };
 
   const getAvatarUrl = (photo?: TeacherPhoto | null) => {
-    if (!photo?.path) return null;
-    let cleanPath = photo.path.replace(/\\/g, "/");
-    if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
-      return cleanPath;
-    }
-    // Relative upload path
-    return `${API_BASE_URL}/${cleanPath.replace(/^\/+/, "")}`;
+    return resolveFileUrl(photo?.path, API_BASE_URL);
   };
 
   // Open Edit Teacher Modal
@@ -408,7 +441,9 @@ export default function TeacherList() {
   };
 
   // Submit Update Teacher
-  const handleUpdateTeacher = async (e?: React.FormEvent | React.MouseEvent) => {
+  const handleUpdateTeacher = async (
+    e?: React.FormEvent | React.MouseEvent,
+  ) => {
     if (e) e.preventDefault();
     if (!editingTeacherId) return;
 
@@ -453,7 +488,14 @@ export default function TeacherList() {
       }
 
       // 2. Call PATCH users/:id
-      const payload: any = {
+      const payload: {
+        email: string;
+        username: string;
+        fullName: string;
+        position: string;
+        password?: string;
+        photo?: { id: string } | null;
+      } = {
         email: editEmail.trim(),
         username: editEmail.trim(),
         fullName: editFullName.trim(),
@@ -501,8 +543,8 @@ export default function TeacherList() {
               alertMsg.variant === "success"
                 ? "Thành công"
                 : alertMsg.variant === "error"
-                ? "Thất bại"
-                : "Thông báo"
+                  ? "Thất bại"
+                  : "Thông báo"
             }
             message={alertMsg.message}
           />
@@ -680,7 +722,9 @@ export default function TeacherList() {
                     {/* 3. Tên giảng viên */}
                     <TableCell className="min-w-[180px] px-6 py-3">
                       <span className="font-medium text-gray-700 text-theme-sm dark:text-gray-300">
-                        {teacher.fullName || teacher.firstName || "Chưa cập nhật"}
+                        {teacher.fullName ||
+                          teacher.firstName ||
+                          "Chưa cập nhật"}
                       </span>
                     </TableCell>
 
@@ -703,7 +747,7 @@ export default function TeacherList() {
                       <button
                         onClick={() =>
                           setOpenDropdownId(
-                            openDropdownId === teacher.id ? null : teacher.id
+                            openDropdownId === teacher.id ? null : teacher.id,
                           )
                         }
                         className="p-1 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
@@ -717,7 +761,9 @@ export default function TeacherList() {
                           {/* Thao tác 1: HỦY (hoặc Kích hoạt lại nếu đã hủy) */}
                           {isCanceled ? (
                             <button
-                              onClick={() => handleAction(teacher, "reactivate")}
+                              onClick={() =>
+                                handleAction(teacher, "reactivate")
+                              }
                               className="text-success-600 hover:bg-success-50 p-2 rounded-full transition-colors"
                               title="Kích hoạt lại tài khoản"
                             >
@@ -759,7 +805,9 @@ export default function TeacherList() {
 
                           {/* Thao tác 2: CẤP MẬT KHẨU TẠM THỜI */}
                           <button
-                            onClick={() => handleAction(teacher, "temp_password")}
+                            onClick={() =>
+                              handleAction(teacher, "temp_password")
+                            }
                             className="text-amber-600 hover:bg-amber-50 p-2 rounded-full transition-colors"
                             title="Cấp mật khẩu tạm thời"
                           >
@@ -855,7 +903,10 @@ export default function TeacherList() {
           <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700 dark:text-gray-400">
-                Trang <span className="font-semibold text-gray-900 dark:text-white">{page}</span>
+                Trang{" "}
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {page}
+                </span>
               </p>
             </div>
             <div>
@@ -1066,10 +1117,7 @@ export default function TeacherList() {
           </div>
 
           <div className="mt-4 flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               Hủy
             </Button>
             <Button onClick={handleCreateTeacher} disabled={isSubmitting}>
@@ -1226,7 +1274,8 @@ export default function TeacherList() {
                       setEditSelectedFile(null);
                       setEditPreviewAvatar(null);
                       setEditRemovePhoto(true);
-                      if (editFileInputRef.current) editFileInputRef.current.value = "";
+                      if (editFileInputRef.current)
+                        editFileInputRef.current.value = "";
                     }}
                     className="text-xs text-error-500 hover:underline text-left"
                   >
@@ -1300,10 +1349,7 @@ export default function TeacherList() {
             >
               Hủy
             </Button>
-            <Button
-              onClick={handleUpdateTeacher}
-              disabled={isEditSubmitting}
-            >
+            <Button onClick={handleUpdateTeacher} disabled={isEditSubmitting}>
               {isEditSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
             </Button>
           </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import React from "react";
 import Link from "next/link";
-import { DocsIcon, ShootingStarIcon } from "@/icons";
+import { DocsIcon } from "@/icons";
 
 export const metadata: Metadata = {
   title: "Bảng xếp hạng Đề thi | TRICE HSK Admin",
@@ -16,7 +16,8 @@ export default function ExamLeaderboardPage() {
           Bảng xếp hạng Đề thi
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Xếp hạng thành tích điểm số và thời gian hoàn thành các bài thi thử / đề thi chính thức theo cấp độ HSK 1 - 9
+          Xếp hạng thành tích điểm số và thời gian hoàn thành các bài thi thử /
+          đề thi chính thức theo cấp độ HSK 1 - 9
         </p>
       </div>
 
@@ -28,7 +29,8 @@ export default function ExamLeaderboardPage() {
           Tính năng Bảng xếp hạng Đề thi đang hoàn thiện
         </h2>
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-          Hệ thống đang tích hợp bảng ghi nhận bài thi học viên để tự động tổng hợp điểm cao nhất và thời gian nộp bài nhanh nhất.
+          Hệ thống đang tích hợp bảng ghi nhận bài thi học viên để tự động tổng
+          hợp điểm cao nhất và thời gian nộp bài nhanh nhất.
         </p>
 
         <div className="mt-6 flex justify-center gap-3">

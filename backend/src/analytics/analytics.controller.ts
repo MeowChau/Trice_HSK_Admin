@@ -22,6 +22,9 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ActiveGuard } from '../auth/guards/active.guard';
+import { ContentEditor } from '../roles/content-editor.decorator';
+import type { RequestWithUser } from '../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -42,8 +45,8 @@ export class AnalyticsController {
   })
   @Get('dashboard')
   @HttpCode(HttpStatus.OK)
-  getDashboard(@Request() req: any) {
-    return this.analyticsService.getDashboard(req.user.id);
+  getDashboard(@Request() req: RequestWithUser<JwtPayloadType>) {
+    return this.analyticsService.getDashboard(Number(req.user.id));
   }
 
   @ApiOperation({
@@ -54,6 +57,7 @@ export class AnalyticsController {
     type: RegistrationsResponseDto,
     description: 'Registration statistics for charts',
   })
+  @ContentEditor()
   @Get('registrations')
   @HttpCode(HttpStatus.OK)
   getRegistrations() {
@@ -65,6 +69,7 @@ export class AnalyticsController {
     type: HskDistributionResponseDto,
     description: 'HSK level distribution for charts',
   })
+  @ContentEditor()
   @Get('hsk-distribution')
   @HttpCode(HttpStatus.OK)
   getHskDistribution() {
@@ -73,6 +78,7 @@ export class AnalyticsController {
 
   @ApiOperation({ summary: 'Get daily study time distribution' })
   @ApiOkResponse({ description: 'Daily study time distribution' })
+  @ContentEditor()
   @Get('daily-study-time-distribution')
   @HttpCode(HttpStatus.OK)
   getDailyStudyTimeDistribution() {
@@ -85,16 +91,22 @@ export class AnalyticsController {
   })
   @Post('ping')
   @HttpCode(HttpStatus.CREATED)
-  pingSession(@Request() req: any, @Body() pingDto: PingSessionDto) {
+  pingSession(
+    @Request() req: RequestWithUser<JwtPayloadType>,
+    @Body() pingDto: PingSessionDto,
+  ) {
     return this.analyticsService.ping(
-      req.user.id,
+      Number(req.user.id),
       pingDto.durationInSeconds,
       pingDto.module,
     );
   }
 
-  @ApiOperation({ summary: 'Get teacher statistics and metrics for admin dashboard' })
+  @ApiOperation({
+    summary: 'Get teacher statistics and metrics for admin dashboard',
+  })
   @ApiOkResponse({ description: 'Teacher statistics metrics' })
+  @ContentEditor()
   @Get('teacher-stats')
   @HttpCode(HttpStatus.OK)
   getTeacherStats() {

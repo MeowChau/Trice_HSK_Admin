@@ -1,15 +1,13 @@
 "use client";
-import React, { useEffect, useRef, useState,useCallback } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
   BoxCubeIcon,
-    ShootingStarIcon,
-    FolderIcon,
-  CalenderIcon,
+  ShootingStarIcon,
+  FolderIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
@@ -18,8 +16,9 @@ import {
   PieChartIcon,
   PlugInIcon,
   TableIcon,
-    TimeIcon,
-  UserCircleIcon, GroupIcon, UserIcon, DocsIcon,
+  TimeIcon,
+  UserCircleIcon,
+  GroupIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -32,60 +31,61 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
-    name: "Tổng quan", path: "/", 
+    name: "Tổng quan",
+    path: "/",
   },
   {
-      name: "Học viên",
-      icon: <GroupIcon />,
-      subItems: [
-        { name: "Danh sách tài khoản", path: "/students", pro: false },
-        { name: "Học viên chờ duyệt", path: "/students/pending", pro: false }
-      ],
-    },
-    {
-      name: "Giáo viên",
-      icon: <UserCircleIcon />,
-      subItems: [
-        { name: "Danh sách giáo viên", path: "/teachers", pro: false },
-        { name: "Thống kê giáo viên", path: "/teachers/stats", pro: false }
-      ],
-    },
-      {
-      name: "Ngân hàng câu hỏi",
-      icon: <ListIcon />,
-      subItems: [
-        { name: "Danh sách câu hỏi", path: "/questions", pro: false },
-        { name: "Thêm câu hỏi", path: "/questions/create", pro: false },
-        { name: "Danh sách đề thi", path: "/exams", pro: false },
-        { name: "Thêm đề thi", path: "/exams/create", pro: false }
-      ],
-    },
-      {
-        name: "Quản lý dữ liệu",
-        icon: <FolderIcon />,
-        subItems: [
-          { name: "Từ vựng", path: "/data/vocabulary", pro: false },
-          { name: "Nghe", path: "/data/listening", pro: false },
-          { name: "Nói", path: "/data/speaking", pro: false },
-          { name: "Đọc", path: "/data/reading", pro: false },
-          { name: "Viết", path: "/data/writing", pro: false },
-          { name: "Các chủ đề bài học", path: "/data/topics", pro: false }
-        ],
-      },
-      {
-        name: "Bảng xếp hạng",
-      icon: <ShootingStarIcon />,
-      subItems: [
-        { name: "Chuỗi ngày", path: "/leaderboard/streak", pro: false },
-        { name: "Đề thi", path: "/leaderboard/exam", pro: false },
-        { name: "Game online", path: "/leaderboard/game", pro: false }
-      ],
-    },
-      {
-        name: "Truy vết chỉnh sửa",
-      icon: <TimeIcon />,
-      path: "/audit-logs",
-    },
+    name: "Học viên",
+    icon: <GroupIcon />,
+    subItems: [
+      { name: "Danh sách tài khoản", path: "/students", pro: false },
+      { name: "Học viên chờ duyệt", path: "/students/pending", pro: false },
+    ],
+  },
+  {
+    name: "Giáo viên",
+    icon: <UserCircleIcon />,
+    subItems: [
+      { name: "Danh sách giáo viên", path: "/teachers", pro: false },
+      { name: "Thống kê giáo viên", path: "/teachers/stats", pro: false },
+    ],
+  },
+  {
+    name: "Ngân hàng câu hỏi",
+    icon: <ListIcon />,
+    subItems: [
+      { name: "Danh sách câu hỏi", path: "/questions", pro: false },
+      { name: "Thêm câu hỏi", path: "/questions/create", pro: false },
+      { name: "Danh sách đề thi", path: "/exams", pro: false },
+      { name: "Thêm đề thi", path: "/exams/create", pro: false },
+    ],
+  },
+  {
+    name: "Quản lý dữ liệu",
+    icon: <FolderIcon />,
+    subItems: [
+      { name: "Từ vựng", path: "/data/vocabulary", pro: false },
+      { name: "Nghe", path: "/data/listening", pro: false },
+      { name: "Nói", path: "/data/speaking", pro: false },
+      { name: "Đọc", path: "/data/reading", pro: false },
+      { name: "Viết", path: "/data/writing", pro: false },
+      { name: "Các chủ đề bài học", path: "/data/topics", pro: false },
+    ],
+  },
+  {
+    name: "Bảng xếp hạng",
+    icon: <ShootingStarIcon />,
+    subItems: [
+      { name: "Chuỗi ngày", path: "/leaderboard/streak", pro: false },
+      { name: "Đề thi", path: "/leaderboard/exam", pro: false },
+      { name: "Game online", path: "/leaderboard/game", pro: false },
+    ],
+  },
+  {
+    name: "Truy vết chỉnh sửa",
+    icon: <TimeIcon />,
+    path: "/audit-logs",
+  },
   {
     name: "Bảng dữ liệu",
     icon: <TableIcon />,
@@ -138,7 +138,7 @@ const AppSidebar: React.FC = () => {
 
   const renderMenuItems = (
     navItems: NavItem[],
-    menuType: "main" | "others"
+    menuType: "main" | "others",
   ) => (
     <ul className="flex flex-col gap-4">
       {navItems.map((nav, index) => (
@@ -204,57 +204,50 @@ const AppSidebar: React.FC = () => {
           )}
           {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
             <div
-              ref={(el) => {
-                subMenuRefs.current[`${menuType}-${index}`] = el;
-              }}
-              className="overflow-hidden transition-all duration-300"
-              style={{
-                height:
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? `${subMenuHeight[`${menuType}-${index}`]}px`
-                    : "0px",
-              }}
+              className={`grid transition-[grid-template-rows] duration-300 ${openSubmenu?.type === menuType && openSubmenu.index === index ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
             >
-              <ul className="mt-2 space-y-1 ml-9">
-                {nav.subItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link
-                      href={subItem.path}
-                      className={`menu-dropdown-item ${
-                        isActive(subItem.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }`}
-                    >
-                      {subItem.name}
-                      <span className="flex items-center gap-1 ml-auto">
-                        {subItem.new && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge `}
-                          >
-                            new
-                          </span>
-                        )}
-                        {subItem.pro && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge `}
-                          >
-                            pro
-                          </span>
-                        )}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <div className="min-h-0 overflow-hidden">
+                <ul className="mt-2 space-y-1 ml-9">
+                  {nav.subItems.map((subItem) => (
+                    <li key={subItem.name}>
+                      <Link
+                        href={subItem.path}
+                        className={`menu-dropdown-item ${
+                          isActive(subItem.path)
+                            ? "menu-dropdown-item-active"
+                            : "menu-dropdown-item-inactive"
+                        }`}
+                      >
+                        {subItem.name}
+                        <span className="flex items-center gap-1 ml-auto">
+                          {subItem.new && (
+                            <span
+                              className={`ml-auto ${
+                                isActive(subItem.path)
+                                  ? "menu-dropdown-badge-active"
+                                  : "menu-dropdown-badge-inactive"
+                              } menu-dropdown-badge `}
+                            >
+                              new
+                            </span>
+                          )}
+                          {subItem.pro && (
+                            <span
+                              className={`ml-auto ${
+                                isActive(subItem.path)
+                                  ? "menu-dropdown-badge-active"
+                                  : "menu-dropdown-badge-inactive"
+                              } menu-dropdown-badge `}
+                            >
+                              pro
+                            </span>
+                          )}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </li>
@@ -262,67 +255,36 @@ const AppSidebar: React.FC = () => {
     </ul>
   );
 
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
-    index: number;
+  type Submenu = { type: "main" | "others"; index: number } | null;
+  const [clickedSubmenu, setClickedSubmenu] = useState<{
+    pathname: string;
+    menu: Submenu;
   } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
+  const paths = [...navItems, ...othersItems].flatMap(
+    (item) =>
+      item.subItems?.map((sub) => sub.path) || (item.path ? [item.path] : []),
   );
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // const isActive = (path: string) => path === pathname;
-   const isActive = useCallback((path: string) => path === pathname, [pathname]);
-
-  useEffect(() => {
-    // Check if the current path matches any submenu item
-    let submenuMatched = false;
-    ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
-    });
-
-    // If no submenu item matches, close the open submenu
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
-    }
-  }, [pathname,isActive]);
-
-  useEffect(() => {
-    // Set the height of the submenu items when the submenu is opened
-    if (openSubmenu !== null) {
-      const key = `${openSubmenu.type}-${openSubmenu.index}`;
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
-        }));
-      }
-    }
-  }, [openSubmenu]);
-
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
+  const isActive = (path: string) =>
+    pathname === path ||
+    (path !== "/" &&
+      pathname.startsWith(`${path}/`) &&
+      !paths.includes(pathname));
+  let routeSubmenu: Submenu = null;
+  for (const type of ["main", "others"] as const) {
+    const index = (type === "main" ? navItems : othersItems).findIndex((item) =>
+      item.subItems?.some((sub) => isActive(sub.path)),
+    );
+    if (index >= 0) routeSubmenu = { type, index };
+  }
+  const openSubmenu =
+    clickedSubmenu?.pathname === pathname ? clickedSubmenu.menu : routeSubmenu;
+  const handleSubmenuToggle = (index: number, type: "main" | "others") => {
+    setClickedSubmenu({
+      pathname,
+      menu:
+        openSubmenu?.index === index && openSubmenu.type === type
+          ? null
+          : { type, index },
     });
   };
 
@@ -333,8 +295,8 @@ const AppSidebar: React.FC = () => {
           isExpanded || isMobileOpen
             ? "w-[290px]"
             : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
+              ? "w-[290px]"
+              : "w-[90px]"
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -407,7 +369,6 @@ const AppSidebar: React.FC = () => {
             </div>
           </div>
         </nav>
-        
       </div>
     </aside>
   );

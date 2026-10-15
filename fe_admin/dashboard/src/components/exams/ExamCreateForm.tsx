@@ -1,4 +1,6 @@
 "use client";
+import { HSK_LEVELS } from "@/constants/hsk";
+import { errorMessage } from "@/lib/error-message";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -7,13 +9,7 @@ import { apiFetch, readApiError } from "@/lib/api";
 import Button from "../ui/button/Button";
 import Badge from "../ui/badge/Badge";
 import { Modal } from "../ui/modal";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
+
 import {
   ChevronLeftIcon,
   PlusIcon,
@@ -21,11 +17,7 @@ import {
   CheckCircleIcon,
   DocsIcon,
   AudioIcon,
-  FileIcon,
-  EyeIcon,
 } from "@/icons";
-
-const HSK_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 interface QuestionOption {
   id: number;
@@ -97,7 +89,9 @@ export default function ExamCreateForm() {
   const [isLoadingBank, setIsLoadingBank] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerSkillFilter, setPickerSkillFilter] = useState("ALL");
-  const [tempCheckedQuestionIds, setTempCheckedQuestionIds] = useState<number[]>([]);
+  const [tempCheckedQuestionIds, setTempCheckedQuestionIds] = useState<
+    number[]
+  >([]);
 
   // Submitting state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -179,17 +173,21 @@ export default function ExamCreateForm() {
     }
   };
 
-  const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
+  const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(
+    null,
+  );
 
   const updateSectionTitle = (tempId: string, newTitle: string) => {
     setSections(
-      sections.map((s) => (s.tempId === tempId ? { ...s, title: newTitle } : s))
+      sections.map((s) =>
+        s.tempId === tempId ? { ...s, title: newTitle } : s,
+      ),
     );
   };
 
   const updateSectionAudio = (tempId: string, audioUrl: string) => {
     setSections(
-      sections.map((s) => (s.tempId === tempId ? { ...s, audioUrl } : s))
+      sections.map((s) => (s.tempId === tempId ? { ...s, audioUrl } : s)),
     );
   };
 
@@ -208,11 +206,14 @@ export default function ExamCreateForm() {
       const data = await res.json();
       const path = data?.file?.path;
       if (path) {
-        const fullUrl = path.startsWith("http") || path.startsWith("/") ? path : `/api/v1/files/${path}`;
+        const fullUrl =
+          path.startsWith("http") || path.startsWith("/")
+            ? path
+            : `/api/v1/files/${path}`;
         updateSectionAudio(tempId, fullUrl);
       }
-    } catch (err: any) {
-      setErrorMsg(`Lỗi tải tệp âm thanh phần thi: ${err.message}`);
+    } catch (err) {
+      setErrorMsg(`Lỗi tải tệp âm thanh phần thi: ${errorMessage(err)}`);
     } finally {
       setUploadingSectionId(null);
     }
@@ -259,7 +260,9 @@ export default function ExamCreateForm() {
 
   const toggleCheckQuestion = (qId: number) => {
     if (tempCheckedQuestionIds.includes(qId)) {
-      setTempCheckedQuestionIds(tempCheckedQuestionIds.filter((id) => id !== qId));
+      setTempCheckedQuestionIds(
+        tempCheckedQuestionIds.filter((id) => id !== qId),
+      );
     } else {
       setTempCheckedQuestionIds([...tempCheckedQuestionIds, qId]);
     }
@@ -267,7 +270,7 @@ export default function ExamCreateForm() {
 
   const handleApplyQuestions = () => {
     const chosenQuestions = bankQuestions.filter((q) =>
-      tempCheckedQuestionIds.includes(q.id)
+      tempCheckedQuestionIds.includes(q.id),
     );
 
     setSections(
@@ -279,7 +282,7 @@ export default function ExamCreateForm() {
           };
         }
         return s;
-      })
+      }),
     );
     setIsQuestionPickerOpen(false);
   };
@@ -290,11 +293,13 @@ export default function ExamCreateForm() {
         if (s.tempId === sectionId) {
           return {
             ...s,
-            selectedQuestions: s.selectedQuestions.filter((q) => q.id !== questionId),
+            selectedQuestions: s.selectedQuestions.filter(
+              (q) => q.id !== questionId,
+            ),
           };
         }
         return s;
-      })
+      }),
     );
   };
 
@@ -311,10 +316,12 @@ export default function ExamCreateForm() {
 
     const totalSelected = sections.reduce(
       (sum, s) => sum + s.selectedQuestions.length,
-      0
+      0,
     );
     if (totalSelected === 0) {
-      setErrorMsg("Đề thi chưa có câu hỏi nào. Vui lòng thêm câu hỏi vào các phần thi ở Bước 3.");
+      setErrorMsg(
+        "Đề thi chưa có câu hỏi nào. Vui lòng thêm câu hỏi vào các phần thi ở Bước 3.",
+      );
       return;
     }
 
@@ -355,10 +362,12 @@ export default function ExamCreateForm() {
           const sectionId = createdSection.id;
 
           if (section.selectedQuestions.length > 0) {
-            const questionsPayload = section.selectedQuestions.map((q, idx) => ({
-              questionId: q.id,
-              order: idx + 1,
-            }));
+            const questionsPayload = section.selectedQuestions.map(
+              (q, idx) => ({
+                questionId: q.id,
+                order: idx + 1,
+              }),
+            );
 
             await apiFetch(`exams/sections/${sectionId}/questions`, {
               method: "POST",
@@ -375,8 +384,10 @@ export default function ExamCreateForm() {
       setTimeout(() => {
         router.push("/exams");
       }, 1200);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Không thể xuất bản đề thi. Vui lòng thử lại.");
+    } catch (err) {
+      setErrorMsg(
+        errorMessage(err, "") || "Không thể xuất bản đề thi. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -384,7 +395,7 @@ export default function ExamCreateForm() {
 
   const totalQuestionsAllSections = sections.reduce(
     (sum, s) => sum + s.selectedQuestions.length,
-    0
+    0,
   );
 
   return (
@@ -405,7 +416,8 @@ export default function ExamCreateForm() {
             Biên soạn đề thi chuẩn HSK (Cấp 1 - 9)
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Quy trình 3 bước thiết lập cấu trúc đề, phân chia phần thi và chọn lọc câu hỏi từ ngân hàng
+            Quy trình 3 bước thiết lập cấu trúc đề, phân chia phần thi và chọn
+            lọc câu hỏi từ ngân hàng
           </p>
         </div>
       </div>
@@ -438,8 +450,12 @@ export default function ExamCreateForm() {
             1
           </span>
           <div>
-            <div className="text-sm font-semibold">Bước 1: Thông tin đề thi</div>
-            <div className="text-xs text-gray-400">Tên đề, cấp độ, thời gian</div>
+            <div className="text-sm font-semibold">
+              Bước 1: Thông tin đề thi
+            </div>
+            <div className="text-xs text-gray-400">
+              Tên đề, cấp độ, thời gian
+            </div>
           </div>
         </button>
 
@@ -456,8 +472,12 @@ export default function ExamCreateForm() {
             2
           </span>
           <div>
-            <div className="text-sm font-semibold">Bước 2: Cấu trúc phần thi</div>
-            <div className="text-xs text-gray-400">{sections.length} phần thi (Nghe, Đọc, Viết)</div>
+            <div className="text-sm font-semibold">
+              Bước 2: Cấu trúc phần thi
+            </div>
+            <div className="text-xs text-gray-400">
+              {sections.length} phần thi (Nghe, Đọc, Viết)
+            </div>
           </div>
         </button>
 
@@ -475,7 +495,9 @@ export default function ExamCreateForm() {
           </span>
           <div>
             <div className="text-sm font-semibold">Bước 3: Chọn câu hỏi</div>
-            <div className="text-xs text-gray-400">Đã chọn {totalQuestionsAllSections} câu hỏi</div>
+            <div className="text-xs text-gray-400">
+              Đã chọn {totalQuestionsAllSections} câu hỏi
+            </div>
           </div>
         </button>
       </div>
@@ -495,7 +517,8 @@ export default function ExamCreateForm() {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1.5">
-                Tên đề thi / Bộ đề luyện tập <span className="text-rose-500">*</span>
+                Tên đề thi / Bộ đề luyện tập{" "}
+                <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -519,7 +542,14 @@ export default function ExamCreateForm() {
                 >
                   {HSK_LEVELS.map((lvl) => (
                     <option key={lvl} value={lvl}>
-                      HSK {lvl} {lvl <= 2 ? "(Sơ cấp)" : lvl <= 4 ? "(Trung cấp)" : lvl <= 6 ? "(Cao cấp)" : "(Nâng cao 7-9)"}
+                      HSK {lvl}{" "}
+                      {lvl <= 2
+                        ? "(Sơ cấp)"
+                        : lvl <= 4
+                          ? "(Trung cấp)"
+                          : lvl <= 6
+                            ? "(Cao cấp)"
+                            : "(Nâng cao 7-9)"}
                     </option>
                   ))}
                 </select>
@@ -581,7 +611,8 @@ export default function ExamCreateForm() {
                 Cấu trúc các phần thi (Exam Sections)
               </h2>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Tổ chức các phần thi theo chuẩn HSK (Nghe, Đọc, Viết) hoặc thêm phần bổ trợ
+                Tổ chức các phần thi theo chuẩn HSK (Nghe, Đọc, Viết) hoặc thêm
+                phần bổ trợ
               </p>
             </div>
             <Button
@@ -596,7 +627,7 @@ export default function ExamCreateForm() {
           </div>
 
           <div className="space-y-4">
-            {sections.map((section, idx) => (
+            {sections.map((section) => (
               <div
                 key={section.tempId}
                 className="p-4 bg-gray-50 border border-gray-200 rounded-xl dark:bg-gray-800/40 dark:border-gray-800 space-y-3"
@@ -609,14 +640,17 @@ export default function ExamCreateForm() {
                     <input
                       type="text"
                       value={section.title}
-                      onChange={(e) => updateSectionTitle(section.tempId, e.target.value)}
+                      onChange={(e) =>
+                        updateSectionTitle(section.tempId, e.target.value)
+                      }
                       className="flex-1 h-10 px-3 text-sm font-semibold text-gray-800 border border-gray-300 rounded-lg focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
                     />
                   </div>
 
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Đã chọn: <strong>{section.selectedQuestions.length} câu</strong>
+                      Đã chọn:{" "}
+                      <strong>{section.selectedQuestions.length} câu</strong>
                     </span>
                     {sections.length > 1 && (
                       <button
@@ -643,7 +677,9 @@ export default function ExamCreateForm() {
                     <input
                       type="text"
                       value={section.audioUrl || ""}
-                      onChange={(e) => updateSectionAudio(section.tempId, e.target.value)}
+                      onChange={(e) =>
+                        updateSectionAudio(section.tempId, e.target.value)
+                      }
                       placeholder="Dán URL file MP3 hoặc bấm Tải tệp..."
                       className="flex-1 h-8 px-2.5 text-xs text-gray-800 border border-gray-300 rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white"
                     />
@@ -651,14 +687,19 @@ export default function ExamCreateForm() {
 
                   <div className="flex items-center gap-2">
                     <label className="cursor-pointer px-3 py-1 text-xs font-medium rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-400 border border-sky-200 dark:border-sky-800 flex items-center gap-1 transition">
-                      <span>{uploadingSectionId === section.tempId ? "Đang tải..." : "Tải MP3/M4A"}</span>
+                      <span>
+                        {uploadingSectionId === section.tempId
+                          ? "Đang tải..."
+                          : "Tải MP3/M4A"}
+                      </span>
                       <input
                         type="file"
                         accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
                         disabled={uploadingSectionId === section.tempId}
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleSectionAudioUpload(section.tempId, file);
+                          if (file)
+                            handleSectionAudioUpload(section.tempId, file);
                         }}
                         className="hidden"
                       />
@@ -708,7 +749,8 @@ export default function ExamCreateForm() {
                 Chọn câu hỏi từ Ngân hàng đề vào từng phần thi
               </h2>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                HSK {hskLevel} • Tổng số câu hỏi hiện tại: <strong>{totalQuestionsAllSections} câu</strong>
+                HSK {hskLevel} • Tổng số câu hỏi hiện tại:{" "}
+                <strong>{totalQuestionsAllSections} câu</strong>
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -727,7 +769,9 @@ export default function ExamCreateForm() {
                 disabled={isSubmitting || totalQuestionsAllSections === 0}
                 startIcon={<CheckCircleIcon className="w-4 h-4" />}
               >
-                {isSubmitting ? "Đang xuất bản đề thi..." : "Hoàn tất & Xuất bản đề thi"}
+                {isSubmitting
+                  ? "Đang xuất bản đề thi..."
+                  : "Hoàn tất & Xuất bản đề thi"}
               </Button>
             </div>
           </div>
@@ -762,7 +806,9 @@ export default function ExamCreateForm() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => openQuestionPicker(curSec.tempId, curSec.skill)}
+                      onClick={() =>
+                        openQuestionPicker(curSec.tempId, curSec.skill)
+                      }
                       startIcon={<PlusIcon className="w-4 h-4" />}
                     >
                       Chọn câu hỏi từ Ngân hàng đề
@@ -780,7 +826,9 @@ export default function ExamCreateForm() {
                         variant="outline"
                         size="sm"
                         className="mt-3"
-                        onClick={() => openQuestionPicker(curSec.tempId, curSec.skill)}
+                        onClick={() =>
+                          openQuestionPicker(curSec.tempId, curSec.skill)
+                        }
                       >
                         Mở thư viện chọn câu hỏi ngay
                       </Button>
@@ -818,7 +866,9 @@ export default function ExamCreateForm() {
 
                           <button
                             type="button"
-                            onClick={() => removeQuestionFromSection(curSec.tempId, q.id)}
+                            onClick={() =>
+                              removeQuestionFromSection(curSec.tempId, q.id)
+                            }
                             className="p-2 text-gray-400 hover:text-rose-500 transition-colors"
                             title="Xóa câu hỏi khỏi phần thi"
                           >
@@ -847,7 +897,8 @@ export default function ExamCreateForm() {
                 Chọn câu hỏi từ Ngân hàng đề thi
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Lọc theo HSK {hskLevel} • Đã chọn {tempCheckedQuestionIds.length} câu hỏi
+                Lọc theo HSK {hskLevel} • Đã chọn{" "}
+                {tempCheckedQuestionIds.length} câu hỏi
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -858,10 +909,7 @@ export default function ExamCreateForm() {
               >
                 Hủy
               </Button>
-              <Button
-                size="sm"
-                onClick={handleApplyQuestions}
-              >
+              <Button size="sm" onClick={handleApplyQuestions}>
                 Áp dụng ({tempCheckedQuestionIds.length}) câu
               </Button>
             </div>
