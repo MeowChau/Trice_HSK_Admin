@@ -1,9 +1,11 @@
 import { studyDate } from '../utils/study-date';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { StudySessionLogEntity } from '../study-sessions/infrastructure/persistence/relational/entities/study-session-log.entity';
+import { StatusEnum } from '../statuses/statuses.enum';
+import { totalExperience } from '../gamification/experience';
 
 @Injectable()
 export class LeaderboardService {
@@ -14,14 +16,26 @@ export class LeaderboardService {
     private readonly studySessionLogRepository: Repository<StudySessionLogEntity>,
   ) {}
 
-  async getStreakLeaderboard(params?: {
-    hskLevel?: number;
-    timeframe?: 'all' | 'month' | 'week';
-    limit?: number;
-  }) {
+  async getStreakLeaderboard(
+    params?: {
+      hskLevel?: number;
+      timeframe?: 'all' | 'month' | 'week';
+      limit?: number;
+      metric?: 'streak' | 'exp';
+    },
+    currentUserId?: number,
+  ) {
     const hskLevel = params?.hskLevel ? Number(params.hskLevel) : undefined;
     const timeframe = params?.timeframe || 'all';
     const limit = params?.limit ? Number(params.limit) : 100;
+    const metric = params?.metric ?? 'streak';
+
+    if (metric === 'exp' && timeframe !== 'all') {
+      throw new UnprocessableEntityException({
+        status: 422,
+        errors: { timeframe: 'lifetimeExpRequiresAllTimeframe' },
+      });
+    }
 
     // Timeframe date boundary
     const now = new Date();
@@ -189,8 +203,6 @@ export class LeaderboardService {
       return b.level - a.level;
     });
 
-    const paginatedLeaderboard = leaderboard.slice(0, limit);
-
     // 3. Compute KPI Summaries
     const allTimeRecord = leaderboard.reduce(
       (max, item) => Math.max(max, item.longestStreak),
@@ -207,16 +219,48 @@ export class LeaderboardService {
       leaderboard.reduce((sum, item) => sum + item.totalHours, 0).toFixed(1),
     );
 
+    const summary = {
+      topStreak,
+      topStreakUser,
+      allTimeRecord,
+      activeStreaksCount,
+      totalStudents: students.length,
+      totalStudyHours,
+    };
+
+    if (metric === 'streak') {
+      return { summary, leaderboard: leaderboard.slice(0, limit) };
+    }
+
+    const experienceLeaderboard = leaderboard
+      .map((student) => ({
+        ...student,
+        totalExp: totalExperience(student),
+      }))
+      .sort((a, b) => b.totalExp - a.totalExp || a.id - b.id)
+      .map((student, index) => ({ ...student, rank: index + 1 }));
+    const currentUser = experienceLeaderboard.find(
+      (student) => student.id === currentUserId,
+    );
+    let myTotalExp: number | null = currentUser?.totalExp ?? null;
+
+    // A user outside the HSK filter (or a teacher/admin) has no student rank,
+    // but can still see their own EXP. Identity comes only from the JWT.
+    if (!currentUser && currentUserId !== undefined) {
+      const profile = await this.userRepository.findOne({
+        where: { id: currentUserId, status: { id: StatusEnum.active } },
+        select: { id: true, level: true, currentExp: true },
+        loadEagerRelations: false,
+      });
+      if (profile) myTotalExp = totalExperience(profile);
+    }
+
     return {
-      summary: {
-        topStreak,
-        topStreakUser,
-        allTimeRecord,
-        activeStreaksCount,
-        totalStudents: students.length,
-        totalStudyHours,
-      },
-      leaderboard: paginatedLeaderboard,
+      metric: 'exp' as const,
+      summary,
+      leaderboard: experienceLeaderboard.slice(0, limit),
+      myRank: currentUser?.rank ?? null,
+      myTotalExp,
     };
   }
 }

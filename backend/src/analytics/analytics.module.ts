@@ -8,9 +8,11 @@ import { UserEntity } from '../users/infrastructure/persistence/relational/entit
 import { QuestionEntity } from '../questions/infrastructure/persistence/relational/entities/question.entity';
 import { ExamEntity } from '../exams/infrastructure/persistence/relational/entities/exam.entity';
 import { PracticeSetEntity } from '../practice-sets/infrastructure/persistence/relational/entities/practice-set.entity';
+import { GamificationModule } from '../gamification/gamification.module';
 
 @Module({
   imports: [
+    GamificationModule,
     TypeOrmModule.forFeature([
       StudySessionLogEntity,
       UserEntity,

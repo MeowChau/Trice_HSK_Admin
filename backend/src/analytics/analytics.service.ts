@@ -1,6 +1,6 @@
 import { databaseDate, studyDate } from '../utils/study-date';
 import { aggregateContent, recentMonths } from './content-counts';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StudySessionLogEntity } from '../study-sessions/infrastructure/persistence/relational/entities/study-session-log.entity';
@@ -8,6 +8,22 @@ import { UserEntity } from '../users/infrastructure/persistence/relational/entit
 import { QuestionEntity } from '../questions/infrastructure/persistence/relational/entities/question.entity';
 import { ExamEntity } from '../exams/infrastructure/persistence/relational/entities/exam.entity';
 import { PracticeSetEntity } from '../practice-sets/infrastructure/persistence/relational/entities/practice-set.entity';
+import {
+  GamificationService,
+  totalExperience,
+} from '../gamification/gamification.service';
+
+const CHECK_IN_MODULE = 'daily_checkin';
+const DAILY_CHECK_IN_EXP = 10;
+
+const publicStudyLog = (log: StudySessionLogEntity) => ({
+  id: log.id,
+  studyDate: log.studyDate,
+  durationInSeconds: log.durationInSeconds,
+  module: log.module,
+  createdAt: log.createdAt,
+  updatedAt: log.updatedAt,
+});
 
 @Injectable()
 export class AnalyticsService {
@@ -22,9 +38,11 @@ export class AnalyticsService {
     private readonly examRepository: Repository<ExamEntity>,
     @InjectRepository(PracticeSetEntity)
     private readonly practiceSetRepository: Repository<PracticeSetEntity>,
+    private readonly gamificationService: GamificationService,
   ) {}
 
   async ping(userId: number, durationInSeconds: number, module: string) {
+    if (module === CHECK_IN_MODULE) return this.checkIn(userId);
     const today = studyDate();
     const log = this.studySessionLogRepository.create({
       studyDate: today,
@@ -32,7 +50,68 @@ export class AnalyticsService {
       module,
       user: { id: userId } as UserEntity,
     });
-    return this.studySessionLogRepository.save(log);
+    return publicStudyLog(await this.studySessionLogRepository.save(log));
+  }
+
+  private checkIn(userId: number) {
+    return this.userRepository.manager.transaction(async (manager) => {
+      const user = await manager
+        .getRepository(UserEntity)
+        .createQueryBuilder('user')
+        .select(['user.id', 'user.level', 'user.currentExp'])
+        .where('user.id = :userId', { userId })
+        .setLock('pessimistic_write')
+        .getOne();
+      if (!user) throw new NotFoundException('User not found');
+
+      // Check the Vietnam day after acquiring the shared user lock. Concurrent
+      // devices and timeout retries must see the first committed check-in.
+      const today = studyDate();
+      const logs = manager.getRepository(StudySessionLogEntity);
+      const previous = await logs.findOne({
+        where: {
+          user: { id: userId },
+          studyDate: today,
+          module: CHECK_IN_MODULE,
+        },
+        loadEagerRelations: false,
+        order: { id: 'ASC' },
+      });
+      if (previous) {
+        // Existing attendance predates EXP rewards: preserve it without
+        // retroactively crediting points or leaking its eager user relation.
+        return {
+          ...publicStudyLog(previous),
+          alreadyCheckedIn: true,
+          expAwarded: 0,
+          level: user.level,
+          currentExp: user.currentExp,
+          totalExp: totalExperience(user),
+        };
+      }
+
+      const log = await logs.save(
+        logs.create({
+          user: { id: userId } as UserEntity,
+          studyDate: today,
+          module: CHECK_IN_MODULE,
+          durationInSeconds: 0,
+        }),
+      );
+      const reward = await this.gamificationService.awardOnce(
+        manager,
+        userId,
+        'daily_checkin',
+        today,
+        DAILY_CHECK_IN_EXP,
+        { studyDate: today, studySessionLogId: log.id },
+      );
+      return {
+        ...publicStudyLog(log),
+        ...reward,
+        alreadyCheckedIn: reward.expAwarded === 0,
+      };
+    });
   }
 
   async getDashboard(userId: number) {
@@ -55,6 +134,9 @@ export class AnalyticsService {
       )
       .addSelect('COUNT(DISTINCT log.studyDate)', 'totalDays')
       .where('log.userId = :userId', { userId, today, sevenDaysAgo })
+      .andWhere('log.module <> :checkInModule AND log.durationInSeconds > 0', {
+        checkInModule: CHECK_IN_MODULE,
+      })
       .getRawOne<{
         timeTotal: string;
         timeToday: string;
@@ -69,6 +151,9 @@ export class AnalyticsService {
         'log.userId = :userId AND log.studyDate BETWEEN :sevenDaysAgo AND :today',
         { userId, sevenDaysAgo, today },
       )
+      .andWhere('log.module <> :checkInModule AND log.durationInSeconds > 0', {
+        checkInModule: CHECK_IN_MODULE,
+      })
       .groupBy('log.studyDate')
       .orderBy('log.studyDate', 'ASC')
       .getRawMany<{ date: string | Date; duration: string }>();
@@ -93,11 +178,18 @@ export class AnalyticsService {
       ORDER BY streak DESC
       LIMIT 1;
     `;
-    const [totals, chartRows, streakResult] = await Promise.all([
-      totalsPromise,
-      chartPromise,
-      this.studySessionLogRepository.query(streakQuery, [userId]),
-    ]);
+    const [totals, chartRows, streakResult, checkedInToday] = await Promise.all(
+      [
+        totalsPromise,
+        chartPromise,
+        this.studySessionLogRepository.query(streakQuery, [userId]),
+        this.studySessionLogRepository.existsBy({
+          user: { id: userId },
+          studyDate: today,
+          module: CHECK_IN_MODULE,
+        }),
+      ],
+    );
     const chartMap = new Map(
       chartRows.map((row) => [databaseDate(row.date), Number(row.duration)]),
     );
@@ -122,6 +214,8 @@ export class AnalyticsService {
     const averagePerDayHours = parseFloat((averagePerDay / 3600).toFixed(1));
 
     return {
+      studyDate: today,
+      checkedInToday,
       timeToday,
       time7Days,
       timeTotal,

@@ -1,6 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class DashboardResponseDto {
+  @ApiProperty({
+    example: '2026-10-17',
+    description: 'Current Vietnam study date',
+  })
+  studyDate: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether the user checked in today',
+  })
+  checkedInToday: boolean;
+
   @ApiProperty({ example: 1.5, description: 'Total study time today in hours' })
   timeToday: number;
 

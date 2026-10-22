@@ -118,6 +118,11 @@ export class VocabularyQueryDto extends HskQueryDto {
 }
 
 export class LeaderboardQueryDto extends HskQueryDto {
+  @ApiPropertyOptional({ enum: ['streak', 'exp'], default: 'streak' })
+  @IsOptional()
+  @IsEnum({ streak: 'streak', exp: 'exp' })
+  metric?: 'streak' | 'exp';
+
   @ApiPropertyOptional({ enum: ['all', 'month', 'week'] })
   @IsOptional()
   @IsEnum({ all: 'all', month: 'month', week: 'week' })

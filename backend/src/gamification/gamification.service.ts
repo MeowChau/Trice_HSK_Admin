@@ -1,8 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
+import {
+  ExpAwardEntity,
+  ExpAwardSource,
+} from './infrastructure/persistence/relational/entities/exp-award.entity';
+import { totalExperience } from './experience';
+
+export { totalExperience } from './experience';
+
+export interface ExpAwardResult {
+  expAwarded: number;
+  level: number;
+  currentExp: number;
+  totalExp: number;
+}
 
 @Injectable()
 export class GamificationService {
@@ -34,26 +53,100 @@ export class GamificationService {
     userId: string | number,
     expToAdd: number,
   ): Promise<UserEntity | null> {
-    const user = await this.userRepository.findOne({
-      where: { id: Number(userId) },
+    this.validateAmount(expToAdd);
+    return this.userRepository.manager.transaction(async (manager) => {
+      const user = await this.lockUser(manager, Number(userId));
+      if (!user) return null;
+      await this.applyExp(manager, user, expToAdd);
+      return user;
     });
-    if (!user) {
-      return null;
+  }
+
+  totalExperience(user: { level: number; currentExp: number }): number {
+    return totalExperience(user);
+  }
+
+  async awardOnce(
+    manager: EntityManager,
+    userId: number,
+    source: ExpAwardSource,
+    sourceId: string,
+    amount: number,
+    metadata?: Record<string, unknown>,
+  ): Promise<ExpAwardResult> {
+    if (!manager.queryRunner?.isTransactionActive) {
+      throw new Error('EXP awards require an active transaction.');
     }
-
-    user.currentExp = (user.currentExp || 0) + expToAdd;
-
-    // Formula: Threshold = current level * 1000
-    // Keep leveling up while currentExp >= threshold
-    let threshold = (user.level || 1) * 1000;
-
-    while (user.currentExp >= threshold) {
-      user.currentExp -= threshold;
-      user.level = (user.level || 1) + 1;
-      threshold = user.level * 1000;
-      this.logger.log(`User ${user.id} leveled up to Level ${user.level}!`);
+    this.validateAmount(amount);
+    if (
+      !Number.isSafeInteger(userId) ||
+      userId < 1 ||
+      !['daily_checkin', 'pk'].includes(source) ||
+      typeof sourceId !== 'string' ||
+      !sourceId.trim() ||
+      sourceId.length > 128
+    ) {
+      throw new BadRequestException('Invalid EXP award source.');
     }
+    const user = await this.lockUser(manager, userId);
+    if (!user) throw new NotFoundException('User not found');
 
-    return this.userRepository.save(user);
+    const inserted = await manager
+      .getRepository(ExpAwardEntity)
+      .createQueryBuilder()
+      .insert()
+      .values({
+        userId,
+        source,
+        sourceId,
+        amount,
+        metadata: () => ':awardMetadata',
+      })
+      .setParameter('awardMetadata', { ...metadata, ruleVersion: 1 })
+      .orIgnore()
+      .returning('id')
+      .execute();
+    const expAwarded =
+      Array.isArray(inserted.raw) && inserted.raw.length > 0 ? amount : 0;
+    if (expAwarded > 0) await this.applyExp(manager, user, expAwarded);
+
+    return {
+      expAwarded,
+      level: user.level,
+      currentExp: user.currentExp,
+      totalExp: totalExperience(user),
+    };
+  }
+
+  private validateAmount(amount: number): void {
+    if (!Number.isSafeInteger(amount) || amount < 0 || amount > 2147483647) {
+      throw new BadRequestException('Invalid EXP amount.');
+    }
+  }
+
+  private lockUser(manager: EntityManager, userId: number) {
+    return manager
+      .getRepository(UserEntity)
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.level', 'user.currentExp'])
+      .where('user.id = :userId', { userId })
+      .setLock('pessimistic_write')
+      .getOne();
+  }
+
+  private async applyExp(
+    manager: EntityManager,
+    user: UserEntity,
+    amount: number,
+  ): Promise<void> {
+    user.currentExp += amount;
+    while (user.currentExp >= user.level * 1000) {
+      user.currentExp -= user.level * 1000;
+      user.level += 1;
+    }
+    await manager.getRepository(UserEntity).update(user.id, {
+      level: user.level,
+      currentExp: user.currentExp,
+    });
   }
 }

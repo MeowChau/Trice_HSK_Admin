@@ -5,6 +5,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Request,
 } from '@nestjs/common';
 import { LeaderboardService } from './leaderboard.service';
 import {
@@ -17,6 +18,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ActiveGuard } from '../auth/guards/active.guard';
 import { LeaderboardQueryDto } from '../utils/dto/content-query.dto';
+import type { RequestWithUser } from '../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 
 @ApiTags('Leaderboard')
 @ApiBearerAuth()
@@ -29,10 +32,18 @@ export class LeaderboardController {
   constructor(private readonly leaderboardService: LeaderboardService) {}
 
   @ApiOperation({
-    summary: 'Get student daily streak leaderboard with HSK 1-9 filtering',
+    summary:
+      'Get student streak or lifetime EXP leaderboard with HSK 1-9 filtering',
   })
   @ApiOkResponse({
-    description: 'Streak leaderboard data with summary metrics and rankings',
+    description:
+      'Leaderboard data with summary metrics; EXP includes global and current-user ranks',
+  })
+  @ApiQuery({
+    name: 'metric',
+    required: false,
+    enum: ['streak', 'exp'],
+    description: 'Ranking metric; defaults to streak. EXP uses timeframe=all.',
   })
   @ApiQuery({
     name: 'hskLevel',
@@ -54,7 +65,13 @@ export class LeaderboardController {
   })
   @Get('streak')
   @HttpCode(HttpStatus.OK)
-  getStreakLeaderboard(@Query() query: LeaderboardQueryDto) {
-    return this.leaderboardService.getStreakLeaderboard(query);
+  getStreakLeaderboard(
+    @Query() query: LeaderboardQueryDto,
+    @Request() req: RequestWithUser<JwtPayloadType>,
+  ) {
+    return this.leaderboardService.getStreakLeaderboard(
+      query,
+      Number(req.user.id),
+    );
   }
 }

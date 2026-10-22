@@ -6,7 +6,8 @@ import { errorMessage } from "@/lib/error-message";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch, readApiError } from "@/lib/api";
+import { API_BASE_URL, apiFetch, readApiError } from "@/lib/api";
+import { resolveFileUrl } from "@/lib/media-url";
 import Badge from "../ui/badge/Badge";
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
@@ -118,6 +119,11 @@ export default function SkillDataManager({
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => () => {
+    audioRef.current?.pause();
+    audioRef.current = null;
+  }, []);
 
   const handleAudioUpload = async (file: File) => {
     if (!file) return;
@@ -389,8 +395,11 @@ export default function SkillDataManager({
 
   // Audio Handler
   const toggleAudio = (url: string) => {
+    const resolvedUrl = resolveFileUrl(url, API_BASE_URL);
+    if (!resolvedUrl) return;
+
     if (!audioRef.current) {
-      audioRef.current = new Audio(url);
+      audioRef.current = new Audio();
       audioRef.current.onended = () => setIsPlayingAudio(false);
     }
 
@@ -398,7 +407,7 @@ export default function SkillDataManager({
       audioRef.current.pause();
       setIsPlayingAudio(false);
     } else {
-      audioRef.current.src = url;
+      audioRef.current.src = resolvedUrl;
       audioRef.current
         .play()
         .then(() => {
@@ -1040,7 +1049,7 @@ export default function SkillDataManager({
                 {formAudioUrl && (
                   <div className="pt-1">
                     <audio
-                      src={formAudioUrl}
+                      src={resolveFileUrl(formAudioUrl, API_BASE_URL) ?? undefined}
                       controls
                       className="w-full h-8 rounded"
                     />
@@ -1151,7 +1160,7 @@ export default function SkillDataManager({
                 {detailSet.audioUrl ? (
                   <div className="pt-1">
                     <audio
-                      src={detailSet.audioUrl}
+                      src={resolveFileUrl(detailSet.audioUrl, API_BASE_URL) ?? undefined}
                       controls
                       className="w-full h-10 rounded-lg"
                     />
