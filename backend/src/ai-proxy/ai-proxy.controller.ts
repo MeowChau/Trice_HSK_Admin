@@ -5,6 +5,7 @@ import {
   UseInterceptors,
   Body,
   UseGuards,
+  Version,
 } from '@nestjs/common';
 import { AiProxyService } from './ai-proxy.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -25,6 +26,7 @@ export class AiProxyController {
   constructor(private readonly aiProxyService: AiProxyService) {}
 
   @Post('speaking/pronunciation-assessment')
+  @Version('1')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('audio', {

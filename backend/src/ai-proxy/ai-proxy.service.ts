@@ -10,6 +10,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { WritingAssessmentResponseDto } from './dto/assessment-response.dto';
+import {
+  assessAzurePronunciation,
+  PronunciationAssessment,
+} from './azure-pronunciation';
 
 @Injectable()
 export class AiProxyService {
@@ -19,13 +23,31 @@ export class AiProxyService {
   evaluatePronunciation(
     file: Express.Multer.File | undefined,
     referenceText: string,
-  ): never {
+  ): Promise<PronunciationAssessment> {
     if (!file || !referenceText?.trim()) {
       throw new BadRequestException('Audio and reference text are required');
     }
-    // No speech provider is integrated yet; avoid returning fabricated scores.
-    throw new ServiceUnavailableException(
-      'Pronunciation assessment is not configured',
+    const key = this.configService
+      .get<string>('AZURE_SPEECH_KEY', { infer: true })
+      ?.trim();
+    const region = this.configService
+      .get<string>('AZURE_SPEECH_REGION', { infer: true })
+      ?.trim();
+    if (!key || !region) {
+      throw new ServiceUnavailableException(
+        'Pronunciation assessment is not configured',
+      );
+    }
+    if (!/^[a-z][a-z0-9]{1,63}$/.test(region)) {
+      throw new ServiceUnavailableException(
+        'AZURE_SPEECH_REGION must be a region identifier such as southeastasia',
+      );
+    }
+    return assessAzurePronunciation(
+      file.buffer,
+      referenceText.trim(),
+      key,
+      region,
     );
   }
 
