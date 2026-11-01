@@ -1,6 +1,89 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+class ActivityTimesDto {
+  @ApiProperty({ description: 'Vocabulary review time in seconds' })
+  review: number;
+
+  @ApiProperty({ description: 'Four-skill practice time in seconds' })
+  practice: number;
+
+  @ApiProperty({ description: 'HSK mock exam time in seconds' })
+  exam: number;
+
+  @ApiProperty({ description: 'PK time in seconds' })
+  pk: number;
+}
+
+class VocabularyStatsDto {
+  @ApiProperty({
+    description: 'Distinct words with recorded learning activity',
+  })
+  learnedCount: number;
+
+  @ApiProperty({ description: 'Words last self-rated remembered' })
+  masteredCount: number;
+
+  @ApiProperty({ description: 'Learned words not currently rated remembered' })
+  learningCount: number;
+
+  @ApiProperty({
+    description: 'Words last self-rated unknown; a subset of learningCount',
+  })
+  reviewCount: number;
+}
+
 export class DashboardResponseDto {
+  @ApiProperty({ example: 'Asia/Ho_Chi_Minh' })
+  timeZone: string;
+
+  @ApiProperty({ description: 'Exact study time today, in seconds' })
+  timeTodaySeconds: number;
+
+  @ApiProperty({
+    description: 'Exact study time in the last seven Vietnam dates, in seconds',
+  })
+  time7DaysSeconds: number;
+
+  @ApiProperty({ description: 'Exact lifetime study time, in seconds' })
+  timeTotalSeconds: number;
+
+  @ApiProperty({
+    type: [Number],
+    description: 'Seven daily study totals in seconds',
+  })
+  chart7DaysSeconds: number[];
+
+  @ApiProperty({
+    type: [String],
+    description: 'Seven Vietnam civil dates, oldest first',
+  })
+  chart7Dates: string[];
+
+  @ApiProperty({
+    description: 'Days with positive study time within the chart',
+  })
+  weekDaysStudied: number;
+
+  @ApiProperty({
+    description: 'Average seconds per studied day within the chart',
+  })
+  weekAverageSeconds: number;
+
+  @ApiProperty({
+    description:
+      'Longest study streak within the chart; excludes attendance-only days',
+  })
+  weekLongestStreak: number;
+
+  @ApiProperty({
+    type: ActivityTimesDto,
+    description: 'Lifetime study seconds by activity',
+  })
+  activityTimes: ActivityTimesDto;
+
+  @ApiProperty({ type: VocabularyStatsDto })
+  vocabularyStats: VocabularyStatsDto;
+
   @ApiProperty({
     example: '2026-10-17',
     description: 'Current Vietnam study date',

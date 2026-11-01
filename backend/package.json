@@ -162,8 +162,9 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true, "checkJs": false } }]
     },
+    "transformIgnorePatterns": ["node_modules/(?!@nestjs/schedule/)"],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

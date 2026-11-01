@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { PingSessionDto } from './dto/ping-session.dto';
+import { VocabularyProgressDto } from './dto/vocabulary-progress.dto';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
 import { RegistrationsResponseDto } from './dto/registrations-response.dto';
 import { HskDistributionResponseDto } from './dto/hsk-distribution-response.dto';
@@ -99,6 +100,21 @@ export class AnalyticsController {
       Number(req.user.id),
       pingDto.durationInSeconds,
       pingDto.module,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Record the current user vocabulary learning progress',
+  })
+  @Post('vocabulary-progress')
+  @HttpCode(HttpStatus.OK)
+  recordVocabularyProgress(
+    @Request() req: RequestWithUser<JwtPayloadType>,
+    @Body() dto: VocabularyProgressDto,
+  ) {
+    return this.analyticsService.recordVocabularyProgress(
+      Number(req.user.id),
+      dto,
     );
   }
 

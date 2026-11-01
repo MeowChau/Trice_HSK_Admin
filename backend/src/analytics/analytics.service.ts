@@ -12,6 +12,7 @@ import {
   GamificationService,
   totalExperience,
 } from '../gamification/gamification.service';
+import { VocabularyProgressDto } from './dto/vocabulary-progress.dto';
 
 const CHECK_IN_MODULE = 'daily_checkin';
 const DAILY_CHECK_IN_EXP = 10;
@@ -51,6 +52,36 @@ export class AnalyticsService {
       user: { id: userId } as UserEntity,
     });
     return publicStudyLog(await this.studySessionLogRepository.save(log));
+  }
+
+  async recordVocabularyProgress(userId: number, dto: VocabularyProgressDto) {
+    const status =
+      dto.action === 'remembered'
+        ? 'remembered'
+        : dto.action === 'unknown'
+          ? 'needs_review'
+          : 'learning';
+    // One row per account and word. Practising writing alone must not change
+    // the user's own remembered/unknown assessment or increment word counts.
+    const rows = await this.studySessionLogRepository.query<
+      {
+        vocabularyId: number;
+        status: string;
+        lastStudiedAt: Date;
+      }[]
+    >(
+      `
+      INSERT INTO "vocabulary_progress" ("userId", "vocabularyId", "status")
+      SELECT $1, id, $3 FROM "vocabulary" WHERE id = $2
+      ON CONFLICT ("userId", "vocabularyId") DO UPDATE SET
+        "status" = CASE WHEN $4 = 'studied' THEN "vocabulary_progress"."status" ELSE EXCLUDED."status" END,
+        "lastStudiedAt" = now(), "updatedAt" = now()
+      RETURNING "vocabularyId", "status", "lastStudiedAt"
+    `,
+      [userId, dto.vocabularyId, status, dto.action],
+    );
+    if (!rows.length) throw new NotFoundException('Vocabulary not found');
+    return rows[0];
   }
 
   private checkIn(userId: number) {
@@ -134,6 +165,7 @@ export class AnalyticsService {
       )
       .addSelect('COUNT(DISTINCT log.studyDate)', 'totalDays')
       .where('log.userId = :userId', { userId, today, sevenDaysAgo })
+      .andWhere('log.studyDate <= :today')
       .andWhere('log.module <> :checkInModule AND log.durationInSeconds > 0', {
         checkInModule: CHECK_IN_MODULE,
       })
@@ -164,7 +196,8 @@ export class AnalyticsService {
       WITH unique_dates AS (
         SELECT DISTINCT "studyDate"::date as s_date
         FROM study_session_log
-        WHERE "userId" = $1
+        WHERE "userId" = $1 AND "module" <> $2
+          AND "durationInSeconds" > 0 AND "studyDate" <= $3
       ),
       groups AS (
         SELECT
@@ -178,24 +211,90 @@ export class AnalyticsService {
       ORDER BY streak DESC
       LIMIT 1;
     `;
-    const [totals, chartRows, streakResult, checkedInToday] = await Promise.all(
-      [
-        totalsPromise,
-        chartPromise,
-        this.studySessionLogRepository.query(streakQuery, [userId]),
-        this.studySessionLogRepository.existsBy({
-          user: { id: userId },
-          studyDate: today,
-          module: CHECK_IN_MODULE,
-        }),
-      ],
+    const activityPromise = this.studySessionLogRepository
+      .createQueryBuilder('log')
+      .select('log.module', 'module')
+      .addSelect('SUM(log.durationInSeconds)', 'duration')
+      .where('log.userId = :userId AND log.studyDate <= :today', {
+        userId,
+        today,
+      })
+      .andWhere('log.module <> :checkInModule AND log.durationInSeconds > 0', {
+        checkInModule: CHECK_IN_MODULE,
+      })
+      .groupBy('log.module')
+      .getRawMany<{ module: string; duration: string }>();
+    const vocabularyPromise = this.studySessionLogRepository.query<
+      {
+        status: string;
+        count: string;
+      }[]
+    >(
+      `SELECT status, COUNT(*) AS count FROM "vocabulary_progress" WHERE "userId" = $1 GROUP BY status`,
+      [userId],
     );
+    const [
+      totals,
+      chartRows,
+      streakResult,
+      checkedInToday,
+      activityRows,
+      vocabularyRows,
+    ] = await Promise.all([
+      totalsPromise,
+      chartPromise,
+      this.studySessionLogRepository.query(streakQuery, [
+        userId,
+        CHECK_IN_MODULE,
+        today,
+      ]),
+      this.studySessionLogRepository.existsBy({
+        user: { id: userId },
+        studyDate: today,
+        module: CHECK_IN_MODULE,
+      }),
+      activityPromise,
+      vocabularyPromise,
+    ]);
     const chartMap = new Map(
       chartRows.map((row) => [databaseDate(row.date), Number(row.duration)]),
     );
-    const chart7Days = last7Dates.map((date) =>
-      Number(((chartMap.get(date) || 0) / 3600).toFixed(1)),
+    const chart7DaysSeconds = last7Dates.map((date) => chartMap.get(date) || 0);
+    const chart7Days = chart7DaysSeconds.map((seconds) => seconds / 3600);
+    const weekDaysStudied = chart7DaysSeconds.filter(
+      (seconds) => seconds > 0,
+    ).length;
+    let weekLongestStreak = 0;
+    let weekStreak = 0;
+    for (const seconds of chart7DaysSeconds) {
+      weekStreak = seconds > 0 ? weekStreak + 1 : 0;
+      weekLongestStreak = Math.max(weekLongestStreak, weekStreak);
+    }
+    const activityTimes = { review: 0, practice: 0, exam: 0, pk: 0 };
+    const activityModules: Record<string, keyof typeof activityTimes> = {
+      vocabulary_review: 'review',
+      practice_listening: 'practice',
+      practice_reading: 'practice',
+      practice_speaking: 'practice',
+      practice_writing: 'practice',
+      hsk_exam: 'exam',
+      game_battle: 'pk',
+    };
+    for (const row of activityRows) {
+      const key = Object.prototype.hasOwnProperty.call(
+        activityModules,
+        row.module,
+      )
+        ? activityModules[row.module]
+        : undefined;
+      if (key) activityTimes[key] += Number(row.duration);
+    }
+    const wordCounts = new Map(
+      vocabularyRows.map((row) => [row.status, Number(row.count)]),
     );
+    const masteredCount = wordCounts.get('remembered') || 0;
+    const reviewCount = wordCounts.get('needs_review') || 0;
+    const learningCount = (wordCounts.get('learning') || 0) + reviewCount;
     const timeTotalSeconds = Number(totals?.timeTotal || 0);
     const totalDaysStudied = Number(totals?.totalDays || 0);
     const averagePerDay =
@@ -216,6 +315,26 @@ export class AnalyticsService {
     return {
       studyDate: today,
       checkedInToday,
+      timeZone: 'Asia/Ho_Chi_Minh',
+      timeTodaySeconds: Number(totals?.timeToday || 0),
+      time7DaysSeconds: Number(totals?.time7Days || 0),
+      timeTotalSeconds,
+      chart7DaysSeconds,
+      chart7Dates: last7Dates,
+      weekDaysStudied,
+      weekAverageSeconds:
+        weekDaysStudied > 0
+          ? chart7DaysSeconds.reduce((sum, seconds) => sum + seconds, 0) /
+            weekDaysStudied
+          : 0,
+      weekLongestStreak,
+      activityTimes,
+      vocabularyStats: {
+        learnedCount: masteredCount + learningCount,
+        masteredCount,
+        learningCount,
+        reviewCount,
+      },
       timeToday,
       time7Days,
       timeTotal,
