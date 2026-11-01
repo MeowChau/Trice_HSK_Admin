@@ -8,6 +8,7 @@ import { AuthModule } from '../auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GameSessionEntity } from './infrastructure/persistence/relational/entities/game-session.entity';
 import { GamificationModule } from '../gamification/gamification.module';
+import { GameController } from './game.controller';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { GamificationModule } from '../gamification/gamification.module';
     TypeOrmModule.forFeature([GameSessionEntity]),
     GamificationModule,
   ],
+  controllers: [GameController],
   providers: [GameGateway, GameService],
 })
 export class GameModule {}

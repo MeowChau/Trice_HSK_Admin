@@ -195,6 +195,55 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
     private readonly gamification: GamificationService,
   ) {}
 
+  async getHistory(
+    userId: number,
+    params: { page?: number; limit?: number } = {},
+  ) {
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      throw new ForbiddenException();
+    }
+    const page = Math.max(1, Math.trunc(params.page || 1));
+    const limit = Math.min(100, Math.max(1, Math.trunc(params.limit || 10)));
+    const offset = (page - 1) * limit;
+    const [sessions, total] = await this.sessionRepository
+      .createQueryBuilder('game')
+      .where(':userId = ANY(game.userIds)', { userId })
+      .andWhere('game.status = :status', { status: 'finished' })
+      .andWhere("game.state->'result' IS NOT NULL")
+      .andWhere("game.state->'result' <> 'null'::jsonb")
+      .orderBy('game.completedAt', 'DESC')
+      .addOrderBy('game.id', 'DESC')
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    // The persisted state also contains private answers; return only summaries.
+    const data = sessions.map((session, index) => {
+      const result = session.state.result!;
+      const score = result.scores.find((item) => item.userId === userId);
+      if (!score) throw new Error('PK history is missing the player’s score.');
+      return {
+        id: session.id,
+        matchIndex: total - offset - index,
+        hskLevel: session.hskLevel,
+        opponentName:
+          result.players.find((player) => player.id !== userId)?.name ||
+          'Đối thủ',
+        score: score.score,
+        correctCount: score.correctCount,
+        totalQuestions: score.totalQuestions,
+        isWin: result.winnerId === userId,
+        isDraw: result.winnerId === null,
+        xpEarned:
+          result.rewards?.find((reward) => reward.userId === userId)
+            ?.expAwarded ?? 0,
+        reason: result.reason,
+        completedAt: session.completedAt?.toISOString() ?? null,
+      };
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   async onModuleInit() {
     const url = this.configService.get<string>('REDIS_URL', { infer: true });
     this.redis = url
