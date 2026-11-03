@@ -29,7 +29,10 @@ export default function ExamEditor({ id }: { id: string }) {
         const res = await apiFetch(`exams/${id}/editor`, { signal: abort.signal });
         if (!res.ok) throw new Error(await readApiError(res));
         const data = await res.json() as Exam;
-        if (!abort.signal.aborted) setExam(data);
+        if (!abort.signal.aborted) setExam({ ...data, sections: [...data.sections]
+          .sort((left, right) => left.order - right.order)
+          .map(section => ({ ...section, sectionQuestions: [...section.sectionQuestions]
+            .sort((left, right) => left.order - right.order) })) });
       } catch (failure) { if (!abort.signal.aborted) setError(failure instanceof Error ? failure.message : "Không tải được đề."); }
     })();
     return () => abort.abort();
@@ -83,7 +86,7 @@ export default function ExamEditor({ id }: { id: string }) {
         {section.audioUrl && <AudioClipPlayer url={section.audioUrl} />}
         <p className="text-sm text-gray-500">Có thể tải audio chung ở đây, hoặc vào Sửa câu hỏi để gắn file / đoạn nghe riêng và xác nhận đáp án. Sửa câu hỏi có hiệu lực ngay, kể cả ở bộ luyện tập khác dùng cùng câu.</p>
         {section.sectionQuestions.map((link, qi) => { const n = ++number; return <details key={link.questionId} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-          <summary className="cursor-pointer font-medium">Câu {n} · #{link.questionId} · {String(link.question?.payload.text ?? "Chưa tải nội dung")}</summary>
+          <summary className="cursor-pointer font-medium" title={`Mã câu hỏi: #${link.questionId}`}>Câu {n} · {String(link.question?.payload.text ?? "Chưa tải nội dung")}</summary>
           <div className="mt-4 space-y-4"><div className="flex flex-wrap gap-4 text-sm">
             <Link href={`/questions/${link.questionId}/edit`} target="_blank" className="text-brand-600">Sửa câu hỏi / đáp án / audio ↗</Link>
             <button type="button" className="text-red-600" onClick={() => changeSection(index, { sectionQuestions: section.sectionQuestions.filter((_, i) => i !== qi) })}>Bỏ khỏi đề</button>
