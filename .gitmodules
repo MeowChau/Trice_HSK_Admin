@@ -1,0 +1,6 @@
+[submodule "backend/Anki-xiehanzi_data"]
+	path = backend/Anki-xiehanzi_data
+	url = https://github.com/krmanik/Anki-xiehanzi.git
+[submodule "backend/HSK-3.0_data"]
+	path = backend/HSK-3.0_data
+	url = https://github.com/krmanik/HSK-3.0.git
