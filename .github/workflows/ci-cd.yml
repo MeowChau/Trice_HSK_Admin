@@ -3,10 +3,10 @@ name: CI and production images
 on:
   pull_request:
     branches: [main]
-    paths: ['backend/**', 'fe_admin/dashboard/**', 'deploy/**', '.github/**']
+    paths: ['.gitmodules', 'backend/**', 'fe_admin/dashboard/**', 'deploy/**', '.github/**']
   push:
     branches: [main]
-    paths: ['backend/**', 'fe_admin/dashboard/**', 'deploy/**', '.github/**']
+    paths: ['.gitmodules', 'backend/**', 'fe_admin/dashboard/**', 'deploy/**', '.github/**']
   workflow_dispatch:
 
 permissions:
