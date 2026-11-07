@@ -67,10 +67,12 @@ jobs:
           --entrypoint node node:24.14.1-alpine /operator/tests/workbook-permissions.test.cjs
       - run: shellcheck deploy/ci/*.sh deploy/import-local-data.sh deploy/fix-media-urls.sh deploy/rebuild-hsk1-workbook.sh deploy/repair-workbook-checksum.sh deploy/restore-hsk1-questions.sh deploy/replace-hsk1-exam.sh deploy/tests/*.sh
       - name: Validate Compose configuration
-        run: >-
-          docker compose --env-file deploy/.env.example
-          -f deploy/compose.yaml -f deploy/compose.tunnel.yaml
-          config --no-env-resolution --quiet
+        run: |
+          cp deploy/.env.example deploy/.env
+          cp deploy/cloudflare.env.example deploy/cloudflare.env
+          docker compose --env-file deploy/.env.example \
+            -f deploy/compose.yaml -f deploy/compose.tunnel.yaml \
+            config --no-env-resolution --quiet
 
   publish:
     needs: [backend, dashboard, deployment-tools]

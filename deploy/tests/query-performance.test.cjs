@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '../..');
 require(path.join(root, 'backend/node_modules/reflect-metadata'));
 const { DataSource } = require(path.join(root, 'backend/node_modules/typeorm'));
 const { AnalyticsService } = require(path.join(root, 'backend/dist/analytics/analytics.service.js'));
+const { GamificationService } = require(path.join(root, 'backend/dist/gamification/gamification.service.js'));
 const { QuestionsService } = require(path.join(root, 'backend/dist/questions/questions.service.js'));
 const { ExamsService } = require(path.join(root, 'backend/dist/exams/exams.service.js'));
 const { studyDate } = require(path.join(root, 'backend/dist/utils/study-date.js'));
@@ -45,9 +46,13 @@ before(async () => {
   const second = await sectionRepo.save(sectionRepo.create({ examId, title: 'Listening', order: 2 }));
   await db.getRepository('ExamSectionQuestionEntity').insert([{ sectionId: section.id, questionId: saved[0].id, order: 1 }, { sectionId: second.id, questionId: saved[1].id, order: 1 }]);
   await db.getRepository('PracticeSetEntity').insert({ title: 'Practice', topic: 'sentinel', skill: 'READING', hskLevel: 1, createdAt: new Date(now.getFullYear(), now.getMonth() - 1, 10) });
-  for (const [date, duration] of [[day(0), 3600], [day(0), 1800], [day(1), 3600], [day(6), 1800], [day(12), 10800]]) await db.getRepository('StudySessionLogEntity').insert({ user: { id: studentId }, studyDate: date, durationInSeconds: duration, module: 'reading' });
+  for (const [date, duration, module] of [[day(0), 3600, 'vocabulary_review'], [day(0), 1800, 'practice_reading'], [day(1), 3600, 'hsk_exam'], [day(6), 1800, 'game_battle'], [day(12), 10800, 'practice_writing'], [day(0), 0, 'daily_checkin'], [day(3), 0, 'daily_checkin']]) await db.getRepository('StudySessionLogEntity').insert({ user: { id: studentId }, studyDate: date, durationInSeconds: duration, module });
+  for (const [index, status] of ['remembered', 'learning', 'needs_review'].entries()) {
+    const word = await db.getRepository('VocabularyEntity').save({ hanzi: `word-${index}`, pinyin: `word-${index}`, meaning: `word ${index}`, hskLevel: 1 });
+    await db.getRepository('VocabularyProgressEntity').insert({ userId: studentId, vocabularyId: word.id, status });
+  }
   const repo = entity => db.getRepository(entity);
-  analytics = new AnalyticsService(repo('StudySessionLogEntity'), repo('UserEntity'), repo('QuestionEntity'), repo('ExamEntity'), repo('PracticeSetEntity'));
+  analytics = new AnalyticsService(repo('StudySessionLogEntity'), repo('UserEntity'), repo('QuestionEntity'), repo('ExamEntity'), repo('PracticeSetEntity'), new GamificationService(repo('UserEntity')));
   questions = new QuestionsService(repo('QuestionEntity'), { record() {} });
   exams = new ExamsService(repo('ExamEntity'), repo('ExamSectionEntity'), repo('ExamSectionQuestionEntity'));
 });
@@ -79,15 +84,33 @@ test('teacher metrics retain archived-teacher semantics and six monthly buckets 
   assert.equal(result.leaderboard.length, 3);
   assert.equal(queries.length, 4);
 });
-test('study dashboard keeps duplicate-day pings and history correct while using three queries', async () => {
+test('study dashboard aggregates time, attendance, activity and vocabulary in six bounded queries', async () => {
   queries.length = 0;
   const result = await analytics.getDashboard(studentId);
   assert.equal(result.timeToday, 1.5); assert.equal(result.time7Days, 3); assert.equal(result.timeTotal, 6);
   assert.equal(result.totalDaysStudied, 4); assert.equal(result.averagePerDay, 1.5); assert.equal(result.longestStreak, 2);
   assert.deepEqual(result.chart7Days, [0.5, 0, 0, 0, 0, 1, 1.5]);
-  assert.equal(queries.length, 3);
+  assert.equal(result.studyDate, day(0)); assert.equal(result.timeZone, 'Asia/Ho_Chi_Minh');
+  assert.equal(result.checkedInToday, true);
+  assert.equal(result.timeTodaySeconds, 5400); assert.equal(result.time7DaysSeconds, 10800); assert.equal(result.timeTotalSeconds, 21600);
+  assert.deepEqual(result.chart7DaysSeconds, [1800, 0, 0, 0, 0, 3600, 5400]);
+  assert.deepEqual(result.chart7Dates, Array.from({ length: 7 }, (_, index) => day(6 - index)));
+  assert.equal(result.weekDaysStudied, 3); assert.equal(result.weekAverageSeconds, 3600); assert.equal(result.weekLongestStreak, 2);
+  assert.deepEqual(result.activityTimes, { review: 3600, practice: 12600, exam: 3600, pk: 1800 });
+  assert.deepEqual(result.vocabularyStats, { learnedCount: 3, masteredCount: 1, learningCount: 2, reviewCount: 1 });
+  assert.equal(queries.length, 6);
+  queries.length = 0;
   const empty = await analytics.getDashboard(2147483647);
-  assert.deepEqual(empty, { timeToday: 0, time7Days: 0, timeTotal: 0, chart7Days: [0, 0, 0, 0, 0, 0, 0], totalDaysStudied: 0, averagePerDay: 0, longestStreak: 0 });
+  assert.deepEqual(empty, {
+    studyDate: day(0), checkedInToday: false, timeZone: 'Asia/Ho_Chi_Minh',
+    timeTodaySeconds: 0, time7DaysSeconds: 0, timeTotalSeconds: 0,
+    chart7DaysSeconds: [0, 0, 0, 0, 0, 0, 0], chart7Dates: Array.from({ length: 7 }, (_, index) => day(6 - index)),
+    weekDaysStudied: 0, weekAverageSeconds: 0, weekLongestStreak: 0,
+    activityTimes: { review: 0, practice: 0, exam: 0, pk: 0 },
+    vocabularyStats: { learnedCount: 0, masteredCount: 0, learningCount: 0, reviewCount: 0 },
+    timeToday: 0, time7Days: 0, timeTotal: 0, chart7Days: [0, 0, 0, 0, 0, 0, 0], totalDaysStudied: 0, averagePerDay: 0, longestStreak: 0,
+  });
+  assert.equal(queries.length, 6);
 });
 test('exam pagination preserves nested structure and counts without duplicating parent rows', async () => {
   const first = await exams.findAll({ limit: 1, page: 1 });
