@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Namespace, Socket } from 'socket.io';
 import { GameGateway } from './game.gateway';
-import { GameService } from './game.service';
+import { GameService, type PkEvent } from './game.service';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
 
 describe('GameGateway authentication and rooms', () => {
@@ -12,6 +12,8 @@ describe('GameGateway authentication and rooms', () => {
     handleUserConnect: jest.fn(),
     handleUserDisconnect: jest.fn(),
     findMatch: jest.fn(),
+    dispatch: jest.fn(),
+    subscribeEvents: jest.fn(),
   };
   const jwt = { verifyAsync: jest.fn() };
   const strategy = { validate: jest.fn() };
@@ -52,7 +54,8 @@ describe('GameGateway authentication and rooms', () => {
     jwt.verifyAsync.mockResolvedValue(payload);
     strategy.validate.mockResolvedValue(payload);
     game.handleUserConnect.mockResolvedValue(1);
-    game.handleUserDisconnect.mockResolvedValue(0);
+    game.handleUserDisconnect.mockResolvedValue({ count: 0, events: [] });
+    game.dispatch.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       providers: [
         GameGateway,
@@ -67,6 +70,10 @@ describe('GameGateway authentication and rooms', () => {
     }).compile();
     gateway = module.get(GameGateway);
     gateway.server = server as unknown as Namespace;
+  });
+
+  afterEach(() => {
+    gateway.onModuleDestroy();
   });
 
   it('should disconnect unauthenticated clients instead of assigning a random user ID', async () => {
@@ -100,17 +107,39 @@ describe('GameGateway authentication and rooms', () => {
     await gateway.handleDisconnect(socket);
     expect(game.handleUserConnect).toHaveBeenCalledWith(7, 1, 'socket-one');
     expect(game.handleUserDisconnect).toHaveBeenCalledWith(7, 1, 'socket-one');
+    expect(socket.join).toHaveBeenCalledWith('pk_user_7');
+    expect(server.emit).toHaveBeenLastCalledWith('online_count_update', {
+      hskLevel: 1,
+      count: 0,
+    });
+    expect(game.dispatch).toHaveBeenCalledWith([]);
   });
 
-  it('should use namespace sockets and await joining before emitting a match', async () => {
+  it('should use namespace sockets and await joining before dispatching a match', async () => {
     const socket = client('socket-one', 'token');
     sockets.set(socket.id, socket);
     await gateway.handleConnection(socket);
-    game.findMatch.mockResolvedValue({
-      matchFound: true,
+    const match = {
+      revision: 1,
       roomId: 'room-1',
       users: [7, 8],
+      players: [],
+      readyUserIds: [],
+      index: 0,
+      stage: 'waiting' as const,
+      turnUserId: 7,
+      deadline: Date.now() + 60000,
+      scores: [],
+      serverNow: Date.now(),
       questions: [],
+    };
+    const events: PkEvent[] = [
+      { userIds: match.users, event: 'match_found', payload: match },
+    ];
+    game.findMatch.mockResolvedValue({
+      matchFound: true,
+      match,
+      events,
     });
     let finishJoin!: () => void;
     const join = new Promise<void>((resolve) => {
@@ -120,13 +149,32 @@ describe('GameGateway authentication and rooms', () => {
     const pending = gateway.handleFindMatch(socket);
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(socket.join).toHaveBeenCalledWith('room-1');
-    expect(broadcast.emit).not.toHaveBeenCalled();
+    expect(game.dispatch).not.toHaveBeenCalled();
     finishJoin();
-    await pending;
-    expect(broadcast.emit).toHaveBeenCalledWith(
-      'match_found',
-      expect.objectContaining({ roomId: 'room-1' }),
-    );
+    await expect(pending).resolves.toEqual({ ok: true });
+    expect(game.findMatch).toHaveBeenCalledWith(7, 1, undefined);
+    expect(game.dispatch).toHaveBeenCalledWith(events);
+  });
+
+  it('should broadcast committed match events to account rooms and unsubscribe on shutdown', () => {
+    let receiveEvent!: (event: PkEvent) => void;
+    const stopEvents = jest.fn();
+    game.subscribeEvents.mockImplementation((listener) => {
+      receiveEvent = listener;
+      return stopEvents;
+    });
+    gateway.onModuleInit();
+    const event: PkEvent = {
+      userIds: [7, 8],
+      event: 'match_cancelled',
+      payload: { roomId: 'room-1', message: 'Cancelled' },
+    };
+    receiveEvent(event);
+    expect(server.to).toHaveBeenCalledWith(['pk_user_7', 'pk_user_8']);
+    expect(broadcast.emit).toHaveBeenCalledWith(event.event, event.payload);
+    expect(stopEvents).not.toHaveBeenCalled();
+    gateway.onModuleDestroy();
+    expect(stopEvents).toHaveBeenCalledTimes(1);
   });
 
   it('should disconnect accounts blocked after connecting', async () => {
