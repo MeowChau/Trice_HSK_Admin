@@ -1,3 +1,4 @@
+import { LearningScoresModule } from './learning-scores/learning-scores.module';
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { DatabaseExceptionFilter } from './utils/filters/database-exception.filter';
@@ -114,6 +115,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     MailerModule,
     HomeModule,
     AnalyticsModule,
+    LearningScoresModule,
     AiProxyModule,
     QuestionsModule,
     ExamsModule,

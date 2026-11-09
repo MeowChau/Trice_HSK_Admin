@@ -1,3 +1,6 @@
+import { LearningScoresService } from '../learning-scores/learning-scores.service';
+import type { RequestWithUser } from '../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 import {
   Controller,
   Post,
@@ -6,6 +9,7 @@ import {
   Body,
   UseGuards,
   Version,
+  Request,
 } from '@nestjs/common';
 import { AiProxyService } from './ai-proxy.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -23,7 +27,10 @@ import {
 @UseGuards(AuthGuard('jwt'), ActiveGuard, ThrottlerGuard)
 @Controller('ai')
 export class AiProxyController {
-  constructor(private readonly aiProxyService: AiProxyService) {}
+  constructor(
+    private readonly aiProxyService: AiProxyService,
+    private readonly learningScores: LearningScoresService,
+  ) {}
 
   @Post('speaking/pronunciation-assessment')
   @Version('1')
@@ -47,11 +54,37 @@ export class AiProxyController {
       },
     },
   })
-  evaluatePronunciation(
+  async evaluatePronunciation(
     @UploadedFile() file: Express.Multer.File,
     @Body() data: PronunciationAssessmentDto,
+    @Request() req: RequestWithUser<JwtPayloadType>,
   ) {
-    return this.aiProxyService.evaluatePronunciation(file, data.referenceText);
+    const question = data.questionId
+      ? await this.learningScores.speechQuestion(
+          Number(data.questionId),
+          data.referenceText,
+        )
+      : null;
+    const assessment = await this.aiProxyService.evaluatePronunciation(
+      file,
+      data.referenceText,
+    );
+    if (!question) return assessment;
+    try {
+      await this.learningScores.recordPronunciation(
+        Number(req.user.id),
+        question,
+        assessment,
+      );
+      return { ...assessment, progressSaved: true };
+    } catch {
+      return {
+        ...assessment,
+        progressSaved: false,
+        progressMessage:
+          'Đã chấm phát âm nhưng chưa lưu được điểm tổng hợp. Hãy thử lại sau khi backend được cập nhật.',
+      };
+    }
   }
 
   @Post('writing-assessment')

@@ -1,0 +1,249 @@
+[
+  {
+    "name": "hsk2-workbook-review-q01-optA.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      201,
+      688,
+      475,
+      995
+    ],
+    "sha256": "c898f69a144243e6076c35e358796aa2522b3130eecd1584de2d1210abf0a223",
+    "bytes": 3412
+  },
+  {
+    "name": "hsk2-workbook-review-q01-optB.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      481,
+      688,
+      755,
+      995
+    ],
+    "sha256": "6a3a213c85fc53a8ea7911edf57dfc2fdc4b480af31813cf6084ac937b5d82c8",
+    "bytes": 4758
+  },
+  {
+    "name": "hsk2-workbook-review-q01-optC.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      761,
+      688,
+      1037,
+      995
+    ],
+    "sha256": "2d5e909c429cf1f52eac7013eca50679f81572a68cb15e8d1dda1ac06cefcd23",
+    "bytes": 4978
+  },
+  {
+    "name": "hsk2-workbook-review-q02-optA.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      201,
+      1001,
+      475,
+      1307
+    ],
+    "sha256": "5719e90de79442bb5bc6eabba37617847cb299f0c58fb7097e8a8cf3ceb228b2",
+    "bytes": 6454
+  },
+  {
+    "name": "hsk2-workbook-review-q02-optB.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      481,
+      1001,
+      755,
+      1307
+    ],
+    "sha256": "2790860d7b322040556cd3927046f5cbb2287ddbf353dd332131d46f90101e03",
+    "bytes": 9996
+  },
+  {
+    "name": "hsk2-workbook-review-q02-optC.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      761,
+      1001,
+      1037,
+      1307
+    ],
+    "sha256": "67558aa95fd9e800f338136f620d8f6acb8e2a134050604c948d02abab0ada37",
+    "bytes": 7316
+  },
+  {
+    "name": "hsk2-workbook-review-q03-optA.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      201,
+      1313,
+      475,
+      1617
+    ],
+    "sha256": "097872fe9fa7aa1aa86b531347038727e487c3558a2c4a2307a3b399938e21ba",
+    "bytes": 10656
+  },
+  {
+    "name": "hsk2-workbook-review-q03-optB.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      481,
+      1313,
+      755,
+      1617
+    ],
+    "sha256": "d858823bbb5e0d3153ab1db1d7bd54ce73a73d0d54488d350efd5950ef00fbed",
+    "bytes": 11820
+  },
+  {
+    "name": "hsk2-workbook-review-q03-optC.webp",
+    "source": "hsk2-workbook-scan-p159.webp",
+    "sourceSha256": "887e4b6f0fad426f8dd003eeb3cb4a5a522d5c66a6cb4131a9f35864f1622b3d",
+    "crop": [
+      761,
+      1313,
+      1037,
+      1617
+    ],
+    "sha256": "5ec51385cef346a527fa1e36d324acb2dd46e053e4246211100d4aaf42842cc2",
+    "bytes": 11266
+  },
+  {
+    "name": "hsk2-workbook-review-q04-optA.webp",
+    "source": "hsk2-workbook-scan-p160.webp",
+    "sourceSha256": "3c4db297b6a4f2ef9c1d8c5d414acfdb9710e5a1e4919173a27a58f9dfd56979",
+    "crop": [
+      223,
+      143,
+      507,
+      452
+    ],
+    "sha256": "0794a4a77179d54511d47320aaf079b97b6e535650033b3261aa466d408a2bb7",
+    "bytes": 9424
+  },
+  {
+    "name": "hsk2-workbook-review-q04-optB.webp",
+    "source": "hsk2-workbook-scan-p160.webp",
+    "sourceSha256": "3c4db297b6a4f2ef9c1d8c5d414acfdb9710e5a1e4919173a27a58f9dfd56979",
+    "crop": [
+      513,
+      143,
+      797,
+      452
+    ],
+    "sha256": "0274afb87b49c1100c5f8d939e652639c5a94aa00621e003d0cc144c5ac40889",
+    "bytes": 7550
+  },
+  {
+    "name": "hsk2-workbook-review-q04-optC.webp",
+    "source": "hsk2-workbook-scan-p160.webp",
+    "sourceSha256": "3c4db297b6a4f2ef9c1d8c5d414acfdb9710e5a1e4919173a27a58f9dfd56979",
+    "crop": [
+      803,
+      143,
+      1082,
+      452
+    ],
+    "sha256": "e17f4a9dd2e3fd2572d0d8e5d5810e647627f7e667796a30227695b8bd3f2ae2",
+    "bytes": 6726
+  },
+  {
+    "name": "hsk2-workbook-review-q05-optA.webp",
+    "source": "hsk2-workbook-scan-p160.webp",
+    "sourceSha256": "3c4db297b6a4f2ef9c1d8c5d414acfdb9710e5a1e4919173a27a58f9dfd56979",
+    "crop": [
+      223,
+      458,
+      507,
+      767
+    ],
+    "sha256": "8271ff7e63397e589b15168ec2325898b77bbdff5b3ac0adf6b07cf3d1c0e6e5",
+    "bytes": 9732
+  },
+  {
+    "name": "hsk2-workbook-review-q05-optB.webp",
+    "source": "hsk2-workbook-scan-p160.webp",
+    "sourceSha256": "3c4db297b6a4f2ef9c1d8c5d414acfdb9710e5a1e4919173a27a58f9dfd56979",
+    "crop": [
+      513,
+      458,
+      797,
+      767
+    ],
+    "sha256": "1ce126eac89474dd73d7a366d428579102e229e62f14ab7f0c83565a5f159849",
+    "bytes": 6710
+  },
+  {
+    "name": "hsk2-workbook-review-q05-optC.webp",
+    "source": "hsk2-workbook-scan-p160.webp",
+    "sourceSha256": "3c4db297b6a4f2ef9c1d8c5d414acfdb9710e5a1e4919173a27a58f9dfd56979",
+    "crop": [
+      803,
+      458,
+      1082,
+      767
+    ],
+    "sha256": "ba4131fa3d9fb9aa332f69096e10110931010783d8a6574f964ea2e8d9ef3438",
+    "bytes": 11174
+  },
+  {
+    "name": "hsk2-workbook-review-bank-p161.webp",
+    "source": "hsk2-workbook-scan-p161.webp",
+    "sourceSha256": "f828e4ea0188d16647fe04aae6911016feee4c58abc272dd2d8676e1f6e02fa2",
+    "crop": [
+      120,
+      292,
+      1080,
+      1048
+    ],
+    "sha256": "c7cf12a268ab8b83981da864ae236983b306509f65be6fe333689ecb961c7a07",
+    "bytes": 54576
+  },
+  {
+    "name": "hsk2-workbook-review-bank-p162.webp",
+    "source": "hsk2-workbook-scan-p162.webp",
+    "sourceSha256": "ea51f1c5f862a9885c0b4cb1c08d89338cb42a202d54876a7aba2d5cc652c796",
+    "crop": [
+      120,
+      223,
+      1096,
+      980
+    ],
+    "sha256": "b2a8438151b886d3d1259880a97eb8145887262fd52b0946dc02734b43c469f9",
+    "bytes": 37916
+  },
+  {
+    "name": "hsk3-workbook-review-bank-p172.webp",
+    "source": "hsk3-workbook-scan-p172.webp",
+    "sourceSha256": "fc329ff5023c3201baac23b277023bf9a07939968e32e6ea07a3ed6d0df78701",
+    "crop": [
+      317,
+      970,
+      2852,
+      2841
+    ],
+    "sha256": "b47bf5ed9deeca7f25b9bab376689ae5bb15f5944a374dddef2c4bc1db1925f7",
+    "bytes": 144998
+  },
+  {
+    "name": "hsk3-workbook-review-bank-p173.webp",
+    "source": "hsk3-workbook-scan-p173.webp",
+    "sourceSha256": "b8cd2b5aa2c3f2838c3614e2878d770ed6bb544f9d1f4b49387e9091a50fd642",
+    "crop": [
+      258,
+      622,
+      2961,
+      2490
+    ],
+    "sha256": "1be58d3cab594c94154e20b473d8fef2f16e052f5bf6f6b0b1097cf424bea0cc",
+    "bytes": 233432
+  }
+]

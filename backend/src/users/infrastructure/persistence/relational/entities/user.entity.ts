@@ -16,6 +16,7 @@ import { FileEntity } from '../../../../../files/infrastructure/persistence/rela
 
 import { AuthProvidersEnum } from '../../../../../auth/auth-providers.enum';
 import { EntityRelationalHelper } from '../../../../../utils/relational-entity-helper';
+import type { AssessmentProgress } from '../../../../../learning-scores/score-types';
 
 @Entity({
   name: 'user',
@@ -92,6 +93,9 @@ export class UserEntity extends EntityRelationalHelper {
 
   @Column({ type: Number, nullable: true })
   targetHskLevel: number | null;
+
+  @Column({ type: 'jsonb', nullable: true, select: false })
+  assessmentProgress?: AssessmentProgress | null;
 
   @Column({ type: Number, nullable: true })
   dailyStudyTime: number | null;

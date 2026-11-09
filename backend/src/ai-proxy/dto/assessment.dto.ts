@@ -3,6 +3,8 @@ import { trimStringTransformer } from '../../utils/transformers/trim-string.tran
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsInt,
+  IsOptional,
+  Matches,
   IsNotEmpty,
   IsString,
   Max,
@@ -33,6 +35,11 @@ export class WritingAssessmentDto {
 }
 
 export class PronunciationAssessmentDto {
+  @IsOptional()
+  @IsString()
+  @Matches(/^[1-9]\d{0,9}$/)
+  questionId?: string;
+
   @ApiProperty()
   @Transform(trimStringTransformer)
   @IsString()
