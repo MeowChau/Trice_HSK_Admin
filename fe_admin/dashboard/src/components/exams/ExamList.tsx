@@ -46,6 +46,7 @@ export interface ExamItem {
       id: number;
       questionId: number;
       order: number;
+      displayNumber?: number;
       question?: QuestionRecord;
     }>;
   }>;
@@ -152,7 +153,19 @@ export default function ExamList() {
         throw new Error(await readApiError(res));
       }
       const data = await res.json();
-      setDetailExam(data);
+      const exam: ExamItem = data;
+      let questionNumber = 1;
+      setDetailExam({
+        ...exam,
+        sections: [...(exam.sections ?? [])]
+          .sort((left, right) => left.order - right.order)
+          .map((section) => ({
+            ...section,
+            sectionQuestions: [...(section.sectionQuestions ?? [])]
+              .sort((left, right) => left.order - right.order)
+              .map((question) => ({ ...question, displayNumber: questionNumber++ })),
+          })),
+      });
       setActiveSectionTab(0);
     } catch (err) {
       alert("Không thể tải chi tiết đề thi: " + errorMessage(err));
@@ -620,7 +633,7 @@ export default function ExamList() {
                         :
                       </span>
                       <span>
-                        Thứ tự phần: #
+                        Thứ tự phần:{" "}
                         {detailExam.sections[activeSectionTab].order}
                       </span>
                     </div>
@@ -631,14 +644,14 @@ export default function ExamList() {
                         .length > 0 ? (
                         detailExam.sections[
                           activeSectionTab
-                        ].sectionQuestions!.map((sq, idx) => (
+                        ].sectionQuestions!.map((sq) => (
                           <div
-                            key={sq.id || idx}
+                            key={sq.questionId}
                             className="p-4 bg-gray-50 rounded-xl border border-gray-100 dark:bg-gray-800/40 dark:border-gray-800 space-y-2"
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold text-gray-600 dark:text-gray-300">
-                                Câu {idx + 1} (Mã #{sq.questionId})
+                                Câu {sq.displayNumber}
                               </span>
                               {sq.question?.skill && (
                                 <Badge variant="light" color="info" size="sm">

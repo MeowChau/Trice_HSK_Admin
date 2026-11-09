@@ -18,7 +18,7 @@ const visibleFields = [
   'manualGrading',
 ];
 
-export function publicExam(exam: ExamEntity) {
+export function publicExam(exam: ExamEntity, includeAnswerKey = false) {
   return {
     id: exam.id,
     title: exam.title,
@@ -46,6 +46,19 @@ export function publicExam(exam: ExamEntity) {
                     .filter((key) => key in q.payload)
                     .map((key) => [key, q.payload[key]]),
                 ),
+                ...(includeAnswerKey
+                  ? {
+                      correctAnswer: q.correctAnswer
+                        ? {
+                            answer: q.correctAnswer.answer,
+                            answers: q.correctAnswer.answers,
+                            optionId: q.correctAnswer.optionId,
+                            id: q.correctAnswer.id,
+                            correctOptionId: q.correctAnswer.correctOptionId,
+                          }
+                        : null,
+                    }
+                  : {}),
               }
             : null,
         };

@@ -10,8 +10,14 @@ import {
   Post,
   Query,
   Put,
+  UseGuards,
+  Injectable,
+  ExecutionContext,
+  Request,
+  Header,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 import { ExamsService } from './exams.service';
 import {
   CreateExamDto,
@@ -22,6 +28,20 @@ import { HskQueryDto } from '../utils/dto/content-query.dto';
 import { QuestionLinksDto } from '../utils/dto/question-links.dto';
 import { ContentEditor } from '../roles/content-editor.decorator';
 import { publicExam } from './exam-view';
+import type { RequestWithUser } from '../utils/types/request-with-user.type';
+import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
+import { StatusEnum } from '../statuses/statuses.enum';
+
+@Injectable()
+export class OptionalExamAuthGuard extends AuthGuard('jwt') {
+  canActivate(context: ExecutionContext) {
+    const request = context
+      .switchToHttp()
+      .getRequest<RequestWithUser<JwtPayloadType | undefined>>();
+    if (!request.headers.authorization) return true;
+    return super.canActivate(context);
+  }
+}
 
 @ApiTags('Exams')
 @Controller({ path: 'exams', version: '1' })
@@ -65,8 +85,17 @@ export class ExamsController {
   }
 
   @Get(':id')
-  async getDetails(@Param('id', ParseIntPipe) id: number) {
-    return publicExam(await this.examsService.getDetails(id));
+  @UseGuards(OptionalExamAuthGuard)
+  @Header('Cache-Control', 'private, no-store')
+  @Header('Vary', 'Authorization')
+  async getDetails(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request: RequestWithUser<JwtPayloadType | undefined>,
+  ) {
+    return publicExam(
+      await this.examsService.getDetails(id),
+      Number(request.user?.status?.id) === StatusEnum.active,
+    );
   }
 
   @ContentEditor()
