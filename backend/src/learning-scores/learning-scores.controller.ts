@@ -5,6 +5,8 @@ import {
   HttpCode,
   Post,
   Query,
+  Param,
+  ParseUUIDPipe,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +20,7 @@ import { LearningScoresService } from './learning-scores.service';
 import {
   SubmitLearningScoreDto,
   ScoreLevelQueryDto,
+  LearningHistoryQueryDto,
 } from './learning-score.dto';
 @ApiTags('Learning scores')
 @ApiBearerAuth()
@@ -25,6 +28,20 @@ import {
 @Controller({ path: 'learning-scores', version: '1' })
 export class LearningScoresController {
   constructor(private readonly scores: LearningScoresService) {}
+  @Get('history')
+  history(
+    @Request() req: RequestWithUser<JwtPayloadType>,
+    @Query() query: LearningHistoryQueryDto,
+  ) {
+    return this.scores.history(Number(req.user.id), query);
+  }
+  @Get('history/:historyId')
+  detail(
+    @Request() req: RequestWithUser<JwtPayloadType>,
+    @Param('historyId', new ParseUUIDPipe()) historyId: string,
+  ) {
+    return this.scores.historyDetail(Number(req.user.id), historyId);
+  }
   @Get()
   summary(
     @Request() req: RequestWithUser<JwtPayloadType>,

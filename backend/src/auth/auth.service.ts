@@ -561,6 +561,9 @@ export class AuthService {
     if (Number(user.status?.id) !== StatusEnum.active) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
+        ...(Number(user.status?.id) === StatusEnum.pending
+          ? { code: 'accountPendingApproval' }
+          : {}),
         errors: { status: 'accountNotActive' },
       });
     }

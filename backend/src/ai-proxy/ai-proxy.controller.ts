@@ -10,6 +10,7 @@ import {
   UseGuards,
   Version,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { AiProxyService } from './ai-proxy.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -21,6 +22,7 @@ import {
   PronunciationAssessmentDto,
   WritingAssessmentDto,
 } from './dto/assessment.dto';
+import type { SpeechAttemptContext } from '../learning-scores/history-types';
 
 @ApiTags('AI Proxy')
 @ApiBearerAuth()
@@ -65,6 +67,32 @@ export class AiProxyController {
           data.referenceText,
         )
       : null;
+    let context: SpeechAttemptContext | undefined;
+    let requestToken: string | undefined;
+    if (
+      data.attemptId !== undefined ||
+      data.kind !== undefined ||
+      data.sourceId !== undefined
+    ) {
+      const sourceId = Number(data.sourceId);
+      if (
+        !question ||
+        !data.attemptId ||
+        !data.kind ||
+        !Number.isInteger(sourceId) ||
+        sourceId <= 0 ||
+        sourceId > 2147483647
+      )
+        throw new BadRequestException(
+          'Cần đủ mã câu, mã lượt và bài nguồn để lưu lịch sử luyện nói.',
+        );
+      context = { attemptId: data.attemptId, kind: data.kind, sourceId };
+      requestToken = await this.learningScores.prepareSpeechAttempt(
+        Number(req.user.id),
+        question,
+        context,
+      );
+    }
     const assessment = await this.aiProxyService.evaluatePronunciation(
       file,
       data.referenceText,
@@ -75,6 +103,8 @@ export class AiProxyController {
         Number(req.user.id),
         question,
         assessment,
+        context,
+        requestToken,
       );
       return { ...assessment, progressSaved: true };
     } catch {

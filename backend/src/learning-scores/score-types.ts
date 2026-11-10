@@ -84,6 +84,9 @@ export interface LevelEvidence {
   at: string;
 }
 export interface SavedScore extends LearningGrade {
+  historyId?: string;
+  submittedAt?: string;
+  accuracyPercent?: number | null;
   currentHskLevel: number | null;
   previousCurrentHskLevel: number | null;
   sourceVersion: string;

@@ -6,13 +6,27 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { ExamEntity } from '../exams/infrastructure/persistence/relational/entities/exam.entity';
 import { PracticeSetEntity } from '../practice-sets/infrastructure/persistence/relational/entities/practice-set.entity';
 import { QuestionEntity } from '../questions/infrastructure/persistence/relational/entities/question.entity';
 import type { PronunciationAssessment } from '../ai-proxy/azure-pronunciation';
-import { SubmitLearningScoreDto } from './learning-score.dto';
+import {
+  LearningHistoryQueryDto,
+  SubmitLearningScoreDto,
+} from './learning-score.dto';
+import { LearningAttemptEntity } from './infrastructure/persistence/relational/entities/learning-attempt.entity';
+import {
+  attemptSnapshot,
+  historySummary,
+  learningSourceVersion,
+  sourceSkills,
+} from './attempt-history';
+import type {
+  LearningAttemptDetail,
+  SpeechAttemptContext,
+} from './history-types';
 import {
   AssessmentProgress,
   emptyProgress,
@@ -47,11 +61,12 @@ export class LearningScoresService {
   constructor(private readonly db: DataSource) {}
   private storageError(cause: unknown): never {
     if (
-      (cause as { driverError?: { code?: string } })?.driverError?.code ===
-      '42703'
+      ['42703', '42P01'].includes(
+        (cause as { driverError?: { code?: string } })?.driverError?.code || '',
+      )
     )
       throw new ServiceUnavailableException(
-        'Cần cập nhật database để lưu điểm và mức HSK. Điểm tạm thời vẫn được giữ trên trang.',
+        'Cần cập nhật database để lưu điểm và lịch sử bài làm. Điểm tạm thời vẫn được giữ trên trang.',
       );
     throw cause;
   }
@@ -73,6 +88,179 @@ export class LearningScoresService {
         level || user.currentHskLevel || 1,
         user.currentHskLevel,
       );
+    } catch (cause) {
+      this.storageError(cause);
+    }
+  }
+  async history(userId: number, query: LearningHistoryQueryDto = {}) {
+    if (query.from && query.to && query.from > query.to)
+      throw new BadRequestException(
+        'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.',
+      );
+    try {
+      const page = Math.max(1, Math.min(1000000, Math.trunc(query.page || 1)));
+      const limit = Math.max(1, Math.min(100, Math.trunc(query.limit || 10)));
+      const builder = this.db
+        .getRepository(LearningAttemptEntity)
+        .createQueryBuilder('attempt')
+        .select(['attempt.id', 'attempt.summary'])
+        .where('attempt.userId = :userId', { userId })
+        .andWhere('attempt.status = :status', { status: 'submitted' });
+      if (query.kind)
+        builder.andWhere('attempt.kind = :kind', { kind: query.kind });
+      if (query.sourceId)
+        builder.andWhere('attempt.sourceId = :sourceId', {
+          sourceId: query.sourceId,
+        });
+      if (query.hskLevel)
+        builder.andWhere('attempt.hskLevel = :hskLevel', {
+          hskLevel: query.hskLevel,
+        });
+      if (query.skill)
+        builder.andWhere(':skill = ANY(attempt.skills)', {
+          skill: query.skill,
+        });
+      if (query.search?.trim())
+        builder.andWhere('attempt.title ILIKE :search', {
+          search: '%' + query.search.trim().replace(/[\\%_]/g, '\\$&') + '%',
+        });
+      if (query.from)
+        builder.andWhere('attempt.submittedAt >= :from', {
+          from: new Date(query.from + 'T00:00:00+07:00'),
+        });
+      if (query.to)
+        builder.andWhere('attempt.submittedAt < :until', {
+          until: new Date(Date.parse(query.to + 'T00:00:00+07:00') + 86400000),
+        });
+      const [attempts, total] = await builder
+        .orderBy('attempt.submittedAt', 'DESC')
+        .addOrderBy('attempt.id', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit)
+        .getManyAndCount();
+      return {
+        data: attempts.map((attempt) => attempt.summary!),
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (cause) {
+      this.storageError(cause);
+    }
+  }
+
+  async historyDetail(
+    userId: number,
+    id: string,
+  ): Promise<LearningAttemptDetail> {
+    try {
+      const attempt = await this.db
+        .getRepository(LearningAttemptEntity)
+        .findOne({ where: { id, userId, status: 'submitted' } });
+      if (!attempt?.result || !attempt.submittedAt)
+        throw new NotFoundException('Không tìm thấy bài làm đã nộp.');
+      return {
+        ...historySummary(attempt),
+        result: attempt.result,
+        snapshot: attempt.snapshot,
+      };
+    } catch (cause) {
+      this.storageError(cause);
+    }
+  }
+
+  private assertAttemptSource(
+    attempt: LearningAttemptEntity,
+    context: SpeechAttemptContext,
+    version?: string,
+  ) {
+    if (attempt.kind !== context.kind || attempt.sourceId !== context.sourceId)
+      throw new ConflictException(
+        'Mã lượt làm đã được sử dụng cho bài khác. Hãy bắt đầu lượt mới.',
+      );
+    if (version && attempt.sourceVersion !== version)
+      throw new ConflictException(
+        'Nội dung bài đã thay đổi. Hãy tải lại bài để bắt đầu lượt mới.',
+      );
+  }
+
+  private async speechDraft(
+    manager: EntityManager,
+    userId: number,
+    question: QuestionEntity,
+    context: SpeechAttemptContext,
+  ) {
+    const repository = manager.getRepository(LearningAttemptEntity);
+    let attempt = await repository.findOne({
+      where: { userId, clientAttemptId: context.attemptId },
+    });
+    if (attempt?.status === 'submitted')
+      throw new ConflictException(
+        'Lượt làm này đã được nộp. Hãy bắt đầu lượt mới để ghi âm lại.',
+      );
+    const source = await this.source(manager, context.kind, context.sourceId);
+    if (
+      !source.items.some(
+        (item) =>
+          item.id === question.id && item.question?.skill === 'SPEAKING',
+      )
+    )
+      throw new BadRequestException('Câu luyện nói không thuộc bài đang làm.');
+    const version = learningSourceVersion(source);
+    if (attempt) this.assertAttemptSource(attempt, context, version);
+    else
+      attempt = await repository.save(
+        repository.create({
+          userId,
+          clientAttemptId: context.attemptId,
+          kind: context.kind,
+          sourceId: context.sourceId,
+          title: source.title,
+          hskLevel: source.level,
+          skills: sourceSkills(source),
+          status: 'draft',
+          sourceVersion: version,
+          snapshot: attemptSnapshot(source),
+          requestHash: null,
+          result: null,
+          summary: null,
+          pendingSpeechRequests: {},
+          durationSeconds: null,
+          startedAt: null,
+          submittedAt: null,
+        }),
+      );
+    return attempt;
+  }
+
+  async prepareSpeechAttempt(
+    userId: number,
+    question: QuestionEntity,
+    context: SpeechAttemptContext,
+  ): Promise<string> {
+    try {
+      return await this.db.transaction(async (manager) => {
+        const user = await this.user(manager, userId, true);
+        if (stateOf(user.assessmentProgress).receipts[context.attemptId])
+          throw new ConflictException(
+            'Lượt làm này đã có kết quả. Hãy bắt đầu lượt mới.',
+          );
+        const attempt = await this.speechDraft(
+          manager,
+          userId,
+          question,
+          context,
+        );
+        const token = randomUUID();
+        attempt.pendingSpeechRequests = {
+          ...attempt.pendingSpeechRequests,
+          [String(question.id)]: token,
+        };
+        delete attempt.snapshot.speakingAssessments[String(question.id)];
+        await manager.getRepository(LearningAttemptEntity).save(attempt);
+        return token;
+      });
     } catch (cause) {
       this.storageError(cause);
     }
@@ -157,6 +345,18 @@ export class LearningScoresService {
       return await this.db.transaction(async (manager) => {
         const user = await this.user(manager, userId, true),
           state = stateOf(user.assessmentProgress);
+        const attempts = manager.getRepository(LearningAttemptEntity);
+        const previousAttempt = await attempts.findOne({
+          where: { userId, clientAttemptId: dto.attemptId },
+        });
+        if (previousAttempt?.status === 'submitted') {
+          if (previousAttempt.requestHash !== hash)
+            throw new ConflictException(
+              'Lượt này đã có kết quả. Vui lòng bắt đầu lượt mới.',
+            );
+          return previousAttempt.result!;
+        }
+        if (previousAttempt) this.assertAttemptSource(previousAttempt, dto);
         const prior = state.receipts[dto.attemptId];
         if (prior) {
           if (prior.hash !== hash)
@@ -180,6 +380,13 @@ export class LearningScoresService {
           };
         }
         const source = await this.source(manager, dto.kind, dto.sourceId);
+        const sourceVersion = learningSourceVersion(source);
+        if (previousAttempt)
+          this.assertAttemptSource(previousAttempt, dto, sourceVersion);
+        if (dto.sourceVersion && dto.sourceVersion !== sourceVersion)
+          throw new ConflictException(
+            'Nội dung bài đã thay đổi. Hãy tải lại bài để bắt đầu lượt mới.',
+          );
         const ids = new Set(source.items.map((item) => String(item.id)));
         if (Object.keys(dto.answers).some((id) => !ids.has(id)))
           throw new BadRequestException(
@@ -251,6 +458,15 @@ export class LearningScoresService {
             ),
           ];
         }
+        const historyId = previousAttempt?.id || randomUUID();
+        const snapshot = attemptSnapshot(
+          source,
+          dto.answers,
+          dto.writingProgress,
+        );
+        if (previousAttempt)
+          snapshot.speakingAssessments =
+            previousAttempt.snapshot.speakingAssessments;
         const result: SavedScore = {
           ...grade,
           hskLevel: source.level,
@@ -258,10 +474,35 @@ export class LearningScoresService {
           previousCurrentHskLevel: user.currentHskLevel,
           previousHskLevel: before,
           estimatedHskLevel: state.estimatedHskLevel,
-          sourceVersion: createHash('sha256')
-            .update(JSON.stringify(source))
-            .digest('hex'),
+          sourceVersion,
+          historyId,
+          submittedAt: now,
+          accuracyPercent: grade.gradedCount
+            ? Math.round((grade.correctCount / grade.gradedCount) * 100)
+            : null,
         };
+        const savedAttempt = attempts.create({
+          ...previousAttempt,
+          id: historyId,
+          userId,
+          clientAttemptId: dto.attemptId,
+          kind: dto.kind,
+          sourceId: dto.sourceId,
+          title: source.title,
+          hskLevel: source.level,
+          skills: sourceSkills(source),
+          status: 'submitted',
+          requestHash: hash,
+          sourceVersion,
+          snapshot,
+          result,
+          submittedAt: new Date(now),
+          durationSeconds: dto.durationSeconds ?? null,
+          startedAt: dto.startedAt ? new Date(dto.startedAt) : null,
+          pendingSpeechRequests: {},
+        });
+        savedAttempt.summary = historySummary(savedAttempt);
+        await attempts.save(savedAttempt);
         state.receipts = Object.fromEntries(
           [
             [dto.attemptId, { hash, result }],
@@ -300,11 +541,36 @@ export class LearningScoresService {
     userId: number,
     question: QuestionEntity,
     assessment: PronunciationAssessment,
+    context?: SpeechAttemptContext,
+    requestToken?: string,
   ) {
     try {
       await this.db.transaction(async (manager) => {
         const user = await this.user(manager, userId, true),
           state = stateOf(user.assessmentProgress);
+        if (context) {
+          const attempt = await this.speechDraft(
+            manager,
+            userId,
+            question,
+            context,
+          );
+          if (
+            !requestToken ||
+            attempt.pendingSpeechRequests[String(question.id)] !== requestToken
+          )
+            throw new ConflictException(
+              'Bản ghi này đã được thay thế bởi lượt ghi âm mới hơn.',
+            );
+          const pending = { ...attempt.pendingSpeechRequests };
+          delete pending[String(question.id)];
+          attempt.pendingSpeechRequests = pending;
+          attempt.snapshot.speakingAssessments = {
+            ...attempt.snapshot.speakingAssessments,
+            [String(question.id)]: assessment,
+          };
+          await manager.getRepository(LearningAttemptEntity).save(attempt);
+        }
         const text = speechTarget({ id: question.id, question }) || '',
           length = text.match(/\p{Script=Han}/gu)?.length || 0;
         const taskKind =

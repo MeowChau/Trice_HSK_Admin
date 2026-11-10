@@ -10,6 +10,7 @@ import {
   Max,
   MaxLength,
   Min,
+  IsIn,
 } from 'class-validator';
 
 export class WritingAssessmentDto {
@@ -35,6 +36,20 @@ export class WritingAssessmentDto {
 }
 
 export class PronunciationAssessmentDto {
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-zA-Z0-9_-]{8,100}$/)
+  attemptId?: string;
+
+  @IsOptional()
+  @IsIn(['exam', 'set'])
+  kind?: 'exam' | 'set';
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[1-9]\d{0,9}$/)
+  sourceId?: string;
+
   @IsOptional()
   @IsString()
   @Matches(/^[1-9]\d{0,9}$/)
