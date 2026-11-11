@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   },
     
     turbopack: {
+      // Keep module resolution inside this independently installed admin app.
+      root: __dirname,
       rules: {
         '*.svg': {
           loaders: ['@svgr/webpack'],
