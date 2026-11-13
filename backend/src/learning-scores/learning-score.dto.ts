@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { HskQueryDto } from '../utils/dto/content-query.dto';
-import { SKILLS, LearningSkill } from './score-types';
+import { SKILLS, LearningSkill, LearningScoreSubmission } from './score-types';
 import {
   IsIn,
   IsInt,
@@ -14,7 +14,7 @@ import {
   Min,
   IsDateString,
 } from 'class-validator';
-export class SubmitLearningScoreDto {
+export class SubmitLearningScoreDto implements LearningScoreSubmission {
   @ApiProperty()
   @IsString()
   @Matches(/^[a-zA-Z0-9_-]{8,100}$/)

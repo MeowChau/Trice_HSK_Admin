@@ -1,12 +1,39 @@
-import { Controller, Get, INestApplication, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  INestApplication,
+  Param,
+  HttpException,
+  BadRequestException,
+  ValidationPipe,
+  Post,
+  Body,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { APP_FILTER } from '@nestjs/core';
 import { QueryFailedError } from 'typeorm';
 import request from 'supertest';
+import { IsEmail } from 'class-validator';
+import validationOptions from '../validation-options';
 import { DatabaseExceptionFilter } from './database-exception.filter';
 
+class ExampleDto {
+  @IsEmail() email: string;
+}
 @Controller('database-errors')
 class DatabaseErrorsController {
+  @Get('http/:status')
+  http(@Param('status') status: string) {
+    throw new HttpException('denied', Number(status));
+  }
+  @Post('validate')
+  validate(@Body() dto: ExampleDto) {
+    return dto;
+  }
+  @Get('legacy')
+  legacy() {
+    throw new BadRequestException({ errors: { email: 'emailAlreadyExists' } });
+  }
   @Get(':code')
   fail(@Param('code') code: string) {
     throw new QueryFailedError(
@@ -25,6 +52,7 @@ describe('Database exception HTTP responses', () => {
       providers: [{ provide: APP_FILTER, useClass: DatabaseExceptionFilter }],
     }).compile();
     app = module.createNestApplication({ logger: false });
+    app.useGlobalPipes(new ValidationPipe(validationOptions));
     await app.init();
   });
   afterAll(async () => {
@@ -50,4 +78,30 @@ describe('Database exception HTTP responses', () => {
       );
     },
   );
+  it.each([400, 401, 403, 404, 409, 422, 429, 503])(
+    'normalizes HTTP %s without changing its meaning',
+    async (status) => {
+      const r = await request(app.getHttpServer())
+        .get(`/database-errors/http/${status}`)
+        .expect(status);
+      expect(r.body).toMatchObject({
+        statusCode: status,
+        status,
+        code: expect.any(String),
+        message: expect.any(String),
+      });
+    },
+  );
+  it('should validate DTO fields as HTTP 400 and retains legacy errors for app/admin', async () => {
+    const r = await request(app.getHttpServer())
+      .post('/database-errors/validate')
+      .send({ email: 'invalid' })
+      .expect(400);
+    expect(r.body.errors.email).toContain('email');
+    expect(r.body.code).toBe('BAD_REQUEST');
+    const legacy = await request(app.getHttpServer())
+      .get('/database-errors/legacy')
+      .expect(400);
+    expect(legacy.body.errors.email).toBe('emailAlreadyExists');
+  });
 });

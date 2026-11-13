@@ -18,7 +18,10 @@ const replace = (params: {
 
     fs.writeFileSync(path, content, 'utf-8');
   } catch (error) {
-    console.error(`Error replacing text in ${path}:`, error.message);
+    console.error(
+      `Error replacing text in ${path}:`,
+      error instanceof Error ? error.message : String(error),
+    );
   }
 };
 

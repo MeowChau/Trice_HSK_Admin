@@ -54,7 +54,8 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     })
   : TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
-      dataSourceFactory: async (options: DataSourceOptions) => {
+      dataSourceFactory: async (options?: DataSourceOptions) => {
+        if (!options) throw new Error('Database configuration is missing');
         return new DataSource(options).initialize();
       },
     });

@@ -39,7 +39,7 @@ describe('Study dates and user query validation', () => {
   ])('should reject invalid self-service profile fields %j', async (body) => {
     await expect(
       pipe.transform(body, { type: 'body', metatype: AuthUpdateDto }),
-    ).rejects.toMatchObject({ status: 422 });
+    ).rejects.toMatchObject({ status: 400 });
   });
   it('should return a validation error instead of crashing on a numeric email', async () => {
     await expect(
@@ -47,7 +47,7 @@ describe('Study dates and user query validation', () => {
         { email: 123, password: 'password' },
         { type: 'body', metatype: AuthEmailLoginDto },
       ),
-    ).rejects.toMatchObject({ status: 422 });
+    ).rejects.toMatchObject({ status: 400 });
   });
 
   it.each(['password', 'role', 'status', 'level', 'currentExp'])(
@@ -58,7 +58,7 @@ describe('Study dates and user query validation', () => {
           { [field]: null },
           { type: 'body', metatype: UpdateUserDto },
         ),
-      ).rejects.toMatchObject({ status: 422 });
+      ).rejects.toMatchObject({ status: 400 });
     },
   );
   it.each(['filters', 'sort'])(
@@ -69,7 +69,7 @@ describe('Study dates and user query validation', () => {
           { [property]: '{invalid' },
           { type: 'query', metatype: QueryUserDto },
         ),
-      ).rejects.toMatchObject({ status: 422 });
+      ).rejects.toMatchObject({ status: 400 });
     },
   );
 
@@ -79,7 +79,7 @@ describe('Study dates and user query validation', () => {
         { sort: JSON.stringify([{ orderBy: 'invalidColumn', order: 'evil' }]) },
         { type: 'query', metatype: QueryUserDto },
       ),
-    ).rejects.toMatchObject({ status: 422 });
+    ).rejects.toMatchObject({ status: 400 });
   });
 
   it('should parse valid nested filters and normalize sorting directions', async () => {

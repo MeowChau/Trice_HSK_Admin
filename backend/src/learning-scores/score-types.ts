@@ -133,3 +133,15 @@ export function emptyProgress(): AssessmentProgress {
     receipts: {},
   };
 }
+
+/** Public request contract implemented by the validated Nest DTO and consumed by the web. */
+export interface LearningScoreSubmission {
+  attemptId: string;
+  kind: 'exam' | 'set';
+  sourceId: number;
+  answers: Record<string, string>;
+  writingProgress?: Record<string, unknown>;
+  startedAt?: string;
+  durationSeconds?: number;
+  sourceVersion?: string;
+}

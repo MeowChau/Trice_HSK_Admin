@@ -12,6 +12,7 @@ describe('GameGateway authentication and rooms', () => {
     handleUserConnect: jest.fn(),
     handleUserDisconnect: jest.fn(),
     findMatch: jest.fn(),
+    dispatch: jest.fn(),
   };
   const jwt = { verifyAsync: jest.fn() };
   const strategy = { validate: jest.fn() };
@@ -52,7 +53,8 @@ describe('GameGateway authentication and rooms', () => {
     jwt.verifyAsync.mockResolvedValue(payload);
     strategy.validate.mockResolvedValue(payload);
     game.handleUserConnect.mockResolvedValue(1);
-    game.handleUserDisconnect.mockResolvedValue(0);
+    game.handleUserDisconnect.mockResolvedValue({ count: 0, events: [] });
+    game.dispatch.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       providers: [
         GameGateway,
@@ -108,9 +110,8 @@ describe('GameGateway authentication and rooms', () => {
     await gateway.handleConnection(socket);
     game.findMatch.mockResolvedValue({
       matchFound: true,
-      roomId: 'room-1',
-      users: [7, 8],
-      questions: [],
+      match: { roomId: 'room-1', users: [7, 8], questions: [] },
+      events: [{ event: 'match_found', payload: { roomId: 'room-1' } }],
     });
     let finishJoin!: () => void;
     const join = new Promise<void>((resolve) => {
@@ -120,13 +121,12 @@ describe('GameGateway authentication and rooms', () => {
     const pending = gateway.handleFindMatch(socket);
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(socket.join).toHaveBeenCalledWith('room-1');
-    expect(broadcast.emit).not.toHaveBeenCalled();
+    expect(game.dispatch).not.toHaveBeenCalled();
     finishJoin();
     await pending;
-    expect(broadcast.emit).toHaveBeenCalledWith(
-      'match_found',
-      expect.objectContaining({ roomId: 'room-1' }),
-    );
+    expect(game.dispatch).toHaveBeenCalledWith([
+      { event: 'match_found', payload: { roomId: 'room-1' } },
+    ]);
   });
 
   it('should disconnect accounts blocked after connecting', async () => {

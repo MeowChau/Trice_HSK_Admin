@@ -210,7 +210,7 @@ describe('Content HTTP authorization and validation', () => {
       .post('/vocabulary')
       .set('Authorization', headers.admin)
       .send({ hanzi: '  ', pinyin: 'nǐ', meaning: 'bạn', hskLevel: 1 })
-      .expect(422);
+      .expect(400);
     expect(vocab.create).not.toHaveBeenCalled();
   });
 
@@ -220,7 +220,7 @@ describe('Content HTTP authorization and validation', () => {
       await request(app.getHttpServer())
         .get('/exams')
         .query({ page })
-        .expect(422);
+        .expect(400);
       expect(exams.findAll).not.toHaveBeenCalled();
     },
   );
@@ -249,7 +249,7 @@ describe('Content HTTP authorization and validation', () => {
         .get('/questions')
         .set('Authorization', headers.admin)
         .query(query)
-        .expect(422);
+        .expect(400);
     }
     expect(questions.findWithPagination).not.toHaveBeenCalled();
   });
@@ -356,7 +356,7 @@ describe('Content HTTP authorization and validation', () => {
         .put('/practice-sets/1/questions')
         .set('Authorization', headers.admin)
         .send(body)
-        .expect(422);
+        .expect(400);
     }
     expect(practice.setQuestions).not.toHaveBeenCalled();
   });
@@ -366,7 +366,7 @@ describe('Content HTTP authorization and validation', () => {
       .patch('/questions/1')
       .set('Authorization', headers.admin)
       .send({ payload: null })
-      .expect(422);
+      .expect(400);
     await request(app.getHttpServer())
       .patch('/questions/1')
       .set('Authorization', headers.admin)
