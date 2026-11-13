@@ -14,7 +14,12 @@ export interface PronunciationAssessment {
   completenessScore: number;
   recognizedText: string;
   feedback: string;
-  words: { word: string; accuracyScore: number | null; errorType: string }[];
+  words: {
+    word: string;
+    accuracyScore: number | null;
+    errorType: string;
+    phonemes?: { phoneme: string; accuracyScore: number }[];
+  }[];
 }
 
 function invalidProviderResult(): never {
@@ -143,6 +148,28 @@ function parseAssessment(value: unknown): PronunciationAssessment {
     ) {
       return invalidProviderResult();
     }
+    let phonemes: { phoneme: string; accuracyScore: number }[] | undefined;
+    if (item.Phonemes != null) {
+      if (!Array.isArray(item.Phonemes) || item.Phonemes.length > 2000) {
+        return invalidProviderResult();
+      }
+      phonemes = item.Phonemes.map((value: unknown) => {
+        const phoneme = asObject(value);
+        const result = phoneme.PronunciationAssessment
+          ? asObject(phoneme.PronunciationAssessment)
+          : phoneme;
+        if (
+          typeof phoneme.Phoneme !== 'string' ||
+          !phoneme.Phoneme.trim() ||
+          phoneme.Phoneme.length > 64
+        )
+          return invalidProviderResult();
+        return {
+          phoneme: phoneme.Phoneme.trim(),
+          accuracyScore: readScore(result.AccuracyScore),
+        };
+      });
+    }
     return {
       word: item.Word,
       accuracyScore:
@@ -150,6 +177,7 @@ function parseAssessment(value: unknown): PronunciationAssessment {
           ? null
           : readScore(assessment.AccuracyScore),
       errorType: assessment.ErrorType,
+      ...(phonemes ? { phonemes } : {}),
     };
   });
   const feedback = [
@@ -199,7 +227,8 @@ export async function assessAzurePronunciation(
     JSON.stringify({
       ReferenceText: referenceText,
       GradingSystem: 'HundredMark',
-      Granularity: 'Word',
+      // zh-CN exposes phoneme names (SAPI); syllable groups are en-US only.
+      Granularity: 'Phoneme',
       Dimension: 'Comprehensive',
       EnableMiscue: true,
       // Prosody is an add-on and isn't supported for zh-CN.
