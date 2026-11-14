@@ -18,6 +18,7 @@ import { IPaginationOptions } from '../utils/types/pagination-options';
 import { FileType } from '../files/domain/file';
 import { Role } from '../roles/domain/role';
 import { Status } from '../statuses/domain/status';
+import { assertHskStudyGoals } from './dto/study-goals.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { SessionService } from '../session/session.service';
@@ -35,6 +36,11 @@ export class UsersService {
   async create(createUserDto: CreateUserDto): Promise<User> {
     // Do not remove comment below.
     // <creating-property />
+
+    assertHskStudyGoals(
+      createUserDto.currentHskLevel,
+      createUserDto.targetHskLevel,
+    );
 
     const password = await bcrypt.hash(
       createUserDto.password ?? randomBytes(24).toString('base64url'),
@@ -312,6 +318,19 @@ export class UsersService {
     const studentCode = updateUserDto.studentCode;
 
     const oldUser = await this.usersRepository.findById(id);
+    if (
+      updateUserDto.currentHskLevel !== undefined ||
+      updateUserDto.targetHskLevel !== undefined
+    ) {
+      assertHskStudyGoals(
+        updateUserDto.currentHskLevel !== undefined
+          ? updateUserDto.currentHskLevel
+          : oldUser?.currentHskLevel,
+        updateUserDto.targetHskLevel !== undefined
+          ? updateUserDto.targetHskLevel
+          : oldUser?.targetHskLevel,
+      );
+    }
 
     const updatedUser = await this.usersRepository.update(id, {
       // Do not remove comment below.

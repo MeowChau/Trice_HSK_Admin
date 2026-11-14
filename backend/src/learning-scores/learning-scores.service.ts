@@ -74,7 +74,12 @@ export class LearningScoresService {
     const user = await manager.getRepository(UserEntity).findOne({
       where: { id },
       loadEagerRelations: false,
-      select: { id: true, currentHskLevel: true, assessmentProgress: true },
+      select: {
+        id: true,
+        currentHskLevel: true,
+        targetHskLevel: true,
+        assessmentProgress: true,
+      },
       ...(lock ? { lock: { mode: 'pessimistic_write' as const } } : {}),
     });
     if (!user) throw new NotFoundException('Không tìm thấy tài khoản.');
@@ -366,10 +371,16 @@ export class LearningScoresService {
           const currentHskLevel = prior.result.passed
             ? Math.max(user.currentHskLevel || 0, prior.result.hskLevel)
             : user.currentHskLevel;
-          if (currentHskLevel !== user.currentHskLevel)
+          const targetHskLevel = currentHskLevel
+            ? Math.max(user.targetHskLevel || 0, currentHskLevel)
+            : user.targetHskLevel;
+          if (
+            currentHskLevel !== user.currentHskLevel ||
+            targetHskLevel !== user.targetHskLevel
+          )
             await manager
               .getRepository(UserEntity)
-              .update(userId, { currentHskLevel });
+              .update(userId, { currentHskLevel, targetHskLevel });
           return {
             ...prior.result,
             currentHskLevel,
@@ -398,6 +409,9 @@ export class LearningScoresService {
         const currentHskLevel = grade.passed
           ? Math.max(user.currentHskLevel || 0, source.level)
           : user.currentHskLevel;
+        const targetHskLevel = currentHskLevel
+          ? Math.max(user.targetHskLevel || 0, currentHskLevel)
+          : user.targetHskLevel;
         if (grade.passed && source.level > (state.estimatedHskLevel || 0)) {
           state.estimatedHskLevel = source.level;
           state.evidence = {
@@ -509,9 +523,11 @@ export class LearningScoresService {
             ...Object.entries(state.receipts),
           ].slice(0, 20),
         );
-        await manager
-          .getRepository(UserEntity)
-          .update(userId, { assessmentProgress: state, currentHskLevel });
+        await manager.getRepository(UserEntity).update(userId, {
+          assessmentProgress: state,
+          currentHskLevel,
+          targetHskLevel,
+        });
         return result;
       });
     } catch (cause) {
