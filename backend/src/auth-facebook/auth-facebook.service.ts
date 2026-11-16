@@ -72,7 +72,7 @@ export class AuthFacebookService {
         throw error;
       }
 
-      if (error.name === 'TimeoutError') {
+      if (error instanceof Error && error.name === 'TimeoutError') {
         throw new HttpException(
           'Facebook API request timeout',
           HttpStatus.REQUEST_TIMEOUT,

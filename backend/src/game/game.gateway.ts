@@ -15,6 +15,7 @@ import { JwtStrategy } from '../auth/strategies/jwt.strategy';
 import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { ConfigService } from '@nestjs/config';
+import { pkExperienceMultiplier } from '../gamification/experience';
 import { AllConfigType } from '../config/config.type';
 
 interface ClientIdentity {
@@ -131,6 +132,7 @@ export class GameGateway
       });
       await client.join(this.userRoom(userId));
       client.emit('pk_connected', {
+        expMultiplier: pkExperienceMultiplier(hskLevel),
         userId,
         hskLevel,
         count,
@@ -243,13 +245,20 @@ export class GameGateway
   }
 
   @SubscribeMessage('cancel_match')
-  async handleCancel(@ConnectedSocket() client: Socket) {
+  async handleCancel(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body?: { roomId?: unknown },
+  ) {
     try {
       const identity = await this.authorize(client);
-      await this.gameService.dispatch(
-        await this.gameService.cancelMatch(identity.userId, identity.hskLevel),
+      const events = await this.gameService.cancelMatch(
+        identity.userId,
+        identity.hskLevel,
+        body?.roomId !== undefined ? this.roomId(body) : undefined,
       );
-      return { ok: true };
+      await this.gameService.dispatch(events);
+      const finished = events.find((event) => event.event === 'game_finished');
+      return { ok: true, ...(finished ? { result: finished.payload } : {}) };
     } catch (error) {
       return { ok: false, message: this.message(error) };
     }

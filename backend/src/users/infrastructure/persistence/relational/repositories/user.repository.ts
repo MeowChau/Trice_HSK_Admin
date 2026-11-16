@@ -12,6 +12,7 @@ import { NullableType } from '../../../../../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto } from '../../../../dto/query-user.dto';
 import { User } from '../../../../domain/user';
 import { UserRepository } from '../../user.repository';
+import { assertHskStudyGoals } from '../../../../dto/study-goals.dto';
 import { UserMapper } from '../mappers/user.mapper';
 import { IPaginationOptions } from '../../../../../utils/types/pagination-options';
 
@@ -186,6 +187,13 @@ export class UsersRelationalRepository implements UserRepository {
         ...UserMapper.toDomain(entity),
         ...cleanPayload,
       };
+      // Recheck against the locked row: a completed exam may have promoted it.
+      if (
+        payload.currentHskLevel !== undefined ||
+        payload.targetHskLevel !== undefined
+      ) {
+        assertHskStudyGoals(merged.currentHskLevel, merged.targetHskLevel);
+      }
       const needsStudentCode =
         (!merged.studentCode &&
           Number(merged.status?.id) === StatusEnum.active) ||

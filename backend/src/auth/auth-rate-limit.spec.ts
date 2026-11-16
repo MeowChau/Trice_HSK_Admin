@@ -63,6 +63,6 @@ describe('Authentication HTTP rate limits', () => {
         username: credentials.username,
         password: 'a'.repeat(73),
       })
-      .expect(422);
+      .expect(400);
   });
 });

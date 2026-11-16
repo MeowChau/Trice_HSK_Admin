@@ -614,9 +614,9 @@ export default function SkillDataManager({
       <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
         <form
           onSubmit={handleSearchSubmit}
-          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)]"
         >
-          <div className="flex-1 relative">
+          <div className="relative min-w-0">
             <input
               type="text"
               value={searchTerm}
@@ -639,12 +639,13 @@ export default function SkillDataManager({
             </svg>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="grid min-w-0 grid-cols-2 items-center gap-3 sm:grid-cols-[minmax(8rem,1fr)_minmax(0,2fr)_auto_auto]">
             {/* HSK Filter */}
             <select
+              aria-label="Lọc theo cấp độ HSK"
               value={selectedHsk}
               onChange={(e) => setSelectedHsk(e.target.value)}
-              className="h-11 px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
+              className="h-11 min-w-0 w-full px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
             >
               <option value="ALL">Tất cả HSK (1-9)</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => (
@@ -656,9 +657,10 @@ export default function SkillDataManager({
 
             {/* Topic Filter */}
             <select
+              aria-label="Lọc theo chủ đề"
               value={selectedTopic}
               onChange={(e) => setSelectedTopic(e.target.value)}
-              className="h-11 px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
+              className="h-11 min-w-0 w-full px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
             >
               <option value="ALL">Tất cả chủ đề</option>
               {topics.map((t) => (

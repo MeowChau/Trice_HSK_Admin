@@ -2,6 +2,8 @@
 
 > Hướng dẫn thiết lập hệ thống, khởi chạy môi trường phát triển (Local Development) và tài liệu tích hợp API dành cho đội ngũ phát triển Frontend.
 
+Frontend học viên hiện ở folder `../IELTS-Beta-Webapp-Next` (package `trice-hsk-user`, cổng 3002), dùng trực tiếp API của repository này. Xem [tài liệu tích hợp frontend học viên](docs/user-frontend-hsk.md) cho các endpoint kiểm tra đáp án và phân tách API public/editor.
+
 > **Trạng thái API:** Các mục `grammar`, `exam-submissions`, `flashcards` và endpoint dưới `gamification` trong bảng bên dưới là tính năng dự kiến, chưa có controller trong backend hiện tại. Bảng xếp hạng đã triển khai ở `/api/v1/leaderboard/streak`. Dùng Swagger của server và [báo cáo rà soát backend](backend/docs/backend-review.md) để đối chiếu API thực tế.
 
 ---

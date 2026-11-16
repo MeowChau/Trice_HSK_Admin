@@ -19,6 +19,8 @@ import {
 } from '../gamification/gamification.service';
 import { GameSessionEntity } from './infrastructure/persistence/relational/entities/game-session.entity';
 
+import { pkExperienceMultiplier } from '../gamification/experience';
+
 export const PK_TURN_MS = 10000;
 export const PK_REVEAL_MS = 1500;
 export const PK_READY_MS = 60000;
@@ -74,7 +76,12 @@ export interface PkResult extends PkRoomState {
   winnerId: number | null;
   reason: 'completed' | 'forfeit';
   durationInSeconds: number;
-  rewards: ({ userId: number } & ExpAwardResult)[];
+  rewards: ({
+    userId: number;
+    baseExp?: number;
+    expMultiplier?: number;
+    hskLevel?: number;
+  } & ExpAwardResult)[];
 }
 export interface PersistedPkState {
   revision?: number;
@@ -578,8 +585,12 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async cancelMatch(userId: number, hskLevel: number): Promise<PkEvent[]> {
-    return this.leaveMatch(userId, hskLevel);
+  async cancelMatch(
+    userId: number,
+    hskLevel: number,
+    roomId?: string,
+  ): Promise<PkEvent[]> {
+    return this.leaveMatch(userId, hskLevel, false, roomId);
   }
 
   async advanceExpired(): Promise<PkEvent[]> {
@@ -686,6 +697,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
     userId: number,
     hskLevel: number,
     onlyWhenOffline = false,
+    expectedRoomId?: string,
   ): Promise<PkEvent[]> {
     return this.sessionRepository.manager.transaction(async (manager) => {
       // Share the exact same user lock with room creation. A cancellation
@@ -703,6 +715,20 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
         ) > 0
       )
         return [];
+      if (expectedRoomId) {
+        const requested = await manager
+          .getRepository(GameSessionEntity)
+          .findOneBy({ id: expectedRoomId });
+        if (!requested) return [];
+        this.assertMember(requested, userId);
+        if (requested.state.result)
+          return [
+            this.event(requested, 'game_finished', requested.state.result),
+          ];
+        if (requested.status === 'cancelled') return [];
+        const active = await this.activeSession(userId, undefined, manager);
+        if (active?.id !== expectedRoomId) return [];
+      }
       await this.redis.incr(this.generationKey(userId));
       for (const queueLevel of new Set([
         hskLevel,
@@ -824,17 +850,19 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
       .setLock('pessimistic_write')
       .getMany();
     const rewards: PkResult['rewards'] = [];
+    const expMultiplier = pkExperienceMultiplier(session.hskLevel);
     for (const user of users) {
       const eligible =
         reason === 'completed' &&
         session.state.answeredUserIds.includes(user.id);
-      const amount = eligible
+      const baseExp = eligible
         ? winnerId === null
           ? 15
           : winnerId === user.id
             ? 30
             : 5
         : 0;
+      const amount = Math.round(baseExp * expMultiplier);
       const reward =
         amount > 0
           ? await this.gamification.awardOnce(
@@ -843,7 +871,14 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
               'pk',
               session.id,
               amount,
-              { reason, winnerId, ruleVersion: 1 },
+              {
+                reason,
+                winnerId,
+                hskLevel: session.hskLevel,
+                baseExp,
+                expMultiplier,
+                ruleVersion: 2,
+              },
             )
           : {
               expAwarded: 0,
@@ -851,7 +886,13 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
               currentExp: user.currentExp,
               totalExp: this.gamification.totalExperience(user),
             };
-      rewards.push({ userId: user.id, ...reward });
+      rewards.push({
+        userId: user.id,
+        baseExp,
+        expMultiplier,
+        hskLevel: session.hskLevel,
+        ...reward,
+      });
     }
     session.state.result = {
       ...this.publicRoom(session),

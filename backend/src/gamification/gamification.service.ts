@@ -102,7 +102,7 @@ export class GamificationService {
         amount,
         metadata: () => ':awardMetadata',
       })
-      .setParameter('awardMetadata', { ...metadata, ruleVersion: 1 })
+      .setParameter('awardMetadata', { ruleVersion: 1, ...metadata })
       .orIgnore()
       .returning('id')
       .execute();

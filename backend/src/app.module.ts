@@ -1,3 +1,4 @@
+import { LearningScoresModule } from './learning-scores/learning-scores.module';
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { DatabaseExceptionFilter } from './utils/filters/database-exception.filter';
@@ -53,7 +54,8 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     })
   : TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
-      dataSourceFactory: async (options: DataSourceOptions) => {
+      dataSourceFactory: async (options?: DataSourceOptions) => {
+        if (!options) throw new Error('Database configuration is missing');
         return new DataSource(options).initialize();
       },
     });
@@ -114,6 +116,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     MailerModule,
     HomeModule,
     AnalyticsModule,
+    LearningScoresModule,
     AiProxyModule,
     QuestionsModule,
     ExamsModule,

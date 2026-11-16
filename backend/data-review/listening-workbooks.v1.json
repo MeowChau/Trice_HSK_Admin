@@ -1,0 +1,1691 @@
+{
+  "version": "listening-workbooks-20261026-v1",
+  "sources": {
+    "workbook1": {
+      "title": "新HSK教程1 学练手册 习题答案",
+      "url": "https://www.scribd.com/document/1044886104/Workbook1Answer-29b999af-8d0e-470a-94d9-3759cc144a8f-1778653865",
+      "note": "Factual answer keys checked against the publicly readable answer booklet and the existing original workbook scans. This is the New HSK Course workbook, not HSK Standard Course."
+    },
+    "workbook2": {
+      "title": "新HSK教程2 学练手册 习题答案",
+      "url": "https://www.scribd.com/document/1054237225/新HSK教程2-学练手册-习题答案",
+      "page": 31
+    },
+    "workbook3": {
+      "title": "新HSK教程3 学练手册参考答案",
+      "url": "https://global.unipus.cn/textbook/detail?id=Vv7AoaFISey1S1WCCuZdDA",
+      "page": 19,
+      "resourceUrl": "https://ipublish-1313083974.cos.ap-beijing.myqcloud.com/0c0a7566915f4f24853fc4192689aa7e/8d12a5fa-74c5-4719-8c1f-01df02883390/msy8k1my_6f5i5u71/%E6%96%B0HSK%E6%95%99%E7%A8%8B3%20%20%E5%AD%A6%E7%BB%83%E6%89%8B%E5%86%8C%E5%8F%82%E8%80%83%E7%AD%94%E6%A1%88.pdf",
+      "pdfSha256": "65ab339b9d9193f63819d5fbd5714fc0f6027b4ab1039f5cbc12a6c2a521cdbe"
+    }
+  },
+  "choiceAnswers": {
+    "1": {
+      "0": "CACBCBCBCABDEAFACABB",
+      "4": "BCBBBDCBAC",
+      "5": "CABABCBDBB",
+      "6": "BBCACCBDAC",
+      "7": "C A C B C C D B A C",
+      "8": "C B A B A D C B C B",
+      "9": "B C A B C D C B A B",
+      "10": "B C B B B C D B A B",
+      "11": "C B C B C D C B B C",
+      "12": "A C B C B D C B A B",
+      "13": "C A C C C C D B B A",
+      "14": "C C B C B D B C A A",
+      "15": "A B C A C B D C A B"
+    },
+    "2": {
+      "0": "A C B B A A F E C B E D B C A A C A B A B C A A B"
+    },
+    "3": {
+      "0": "B C A F E B E D A C C C B A C B C A B A C B C C B C B A A A"
+    }
+  },
+  "textOptions": {
+    "1": {
+      "4:4": [
+        [
+          "十人",
+          "shí rén"
+        ],
+        [
+          "20个",
+          "èrshí gè"
+        ],
+        [
+          "三口人",
+          "sān kǒu rén"
+        ]
+      ],
+      "4:5": [
+        [
+          "大",
+          "dà"
+        ],
+        [
+          "12岁",
+          "shí'èr suì"
+        ],
+        [
+          "两千",
+          "liǎngqiān"
+        ]
+      ],
+      "4:9": [
+        [
+          "中国人",
+          "Zhōngguó rén"
+        ],
+        [
+          "泰国人",
+          "Tàiguó rén"
+        ],
+        [
+          "法国人",
+          "Fǎguó rén"
+        ]
+      ],
+      "4:10": [
+        [
+          "安妮",
+          "Ānnī"
+        ],
+        [
+          "王一飞",
+          "Wáng Yīfēi"
+        ],
+        [
+          "白家月",
+          "Bái Jiāyuè"
+        ]
+      ],
+      "5:4": [
+        [
+          "我不会",
+          "wǒ bú huì"
+        ],
+        [
+          "我吃饺子",
+          "wǒ chī jiǎozi"
+        ],
+        [
+          "做面条儿",
+          "zuò miàntiáor"
+        ]
+      ],
+      "5:5": [
+        [
+          "休息",
+          "xiūxi"
+        ],
+        [
+          "星期四",
+          "Xīngqīsì"
+        ],
+        [
+          "五口人",
+          "wǔ kǒu rén"
+        ]
+      ],
+      "5:9": [
+        [
+          "菜",
+          "cài"
+        ],
+        [
+          "饺子",
+          "jiǎozi"
+        ],
+        [
+          "面条儿",
+          "miàntiáor"
+        ]
+      ],
+      "5:10": [
+        [
+          "4号",
+          "sì hào"
+        ],
+        [
+          "10号",
+          "shí hào"
+        ],
+        [
+          "14号",
+          "shísì hào"
+        ]
+      ],
+      "6:4": [
+        [
+          "超市",
+          "chāoshì"
+        ],
+        [
+          "做饭",
+          "zuò fàn"
+        ],
+        [
+          "东西",
+          "dōngxi"
+        ]
+      ],
+      "6:5": [
+        [
+          "去",
+          "qù"
+        ],
+        [
+          "西安饭店",
+          "Xī'ān Fàndiàn"
+        ],
+        [
+          "坐出租车",
+          "zuò chūzūchē"
+        ]
+      ],
+      "6:9": [
+        [
+          "5362805",
+          ""
+        ],
+        [
+          "5398205",
+          ""
+        ],
+        [
+          "5326085",
+          ""
+        ]
+      ],
+      "6:10": [
+        [
+          "包子",
+          "bāozi"
+        ],
+        [
+          "饺子",
+          "jiǎozi"
+        ],
+        [
+          "面条儿",
+          "miàntiáor"
+        ]
+      ],
+      "7:4": [
+        [
+          "10:00",
+          ""
+        ],
+        [
+          "12:00",
+          ""
+        ],
+        [
+          "12号",
+          "shí'èr hào"
+        ]
+      ],
+      "7:5": [
+        [
+          "8月",
+          "bā yuè"
+        ],
+        [
+          "三分钟",
+          "sān fēnzhōng"
+        ],
+        [
+          "7:10",
+          ""
+        ]
+      ],
+      "7:9": [
+        [
+          "上课",
+          "shàngkè"
+        ],
+        [
+          "上班",
+          "shàngbān"
+        ],
+        [
+          "看电影",
+          "kàn diànyǐng"
+        ]
+      ],
+      "7:10": [
+        [
+          "饭店",
+          "fàndiàn"
+        ],
+        [
+          "菜店",
+          "càidiàn"
+        ],
+        [
+          "超市",
+          "chāoshì"
+        ]
+      ],
+      "8:4": [
+        [
+          "去学校",
+          "qù xuéxiào"
+        ],
+        [
+          "房间外",
+          "fángjiān wài"
+        ],
+        [
+          "在吃东西",
+          "zài chī dōngxi"
+        ]
+      ],
+      "8:5": [
+        [
+          "我能到",
+          "wǒ néng dào"
+        ],
+        [
+          "我吃午饭",
+          "wǒ chī wǔfàn"
+        ],
+        [
+          "我不能工作",
+          "wǒ bù néng gōngzuò"
+        ]
+      ],
+      "8:9": [
+        [
+          "超市",
+          "chāoshì"
+        ],
+        [
+          "饭店",
+          "fàndiàn"
+        ],
+        [
+          "学校书店",
+          "xuéxiào shūdiàn"
+        ]
+      ],
+      "8:10": [
+        [
+          "去学校",
+          "qù xuéxiào"
+        ],
+        [
+          "看电影",
+          "kàn diànyǐng"
+        ],
+        [
+          "去上班",
+          "qù shàngbān"
+        ]
+      ],
+      "9:4": [
+        [
+          "书",
+          "shū"
+        ],
+        [
+          "我的",
+          "wǒ de"
+        ],
+        [
+          "他的电脑",
+          "tā de diànnǎo"
+        ]
+      ],
+      "9:5": [
+        [
+          "星期天",
+          "Xīngqītiān"
+        ],
+        [
+          "孩子们",
+          "háizimen"
+        ],
+        [
+          "去外边唱歌",
+          "qù wàibian chàng gē"
+        ]
+      ],
+      "9:9": [
+        [
+          "上午8:00",
+          "shàngwǔ bā diǎn"
+        ],
+        [
+          "上午10:00",
+          "shàngwǔ shí diǎn"
+        ],
+        [
+          "晚上8:00",
+          "wǎnshang bā diǎn"
+        ]
+      ],
+      "9:10": [
+        [
+          "菜店",
+          "càidiàn"
+        ],
+        [
+          "书店",
+          "shūdiàn"
+        ],
+        [
+          "超市",
+          "chāoshì"
+        ]
+      ],
+      "10:4": [
+        [
+          "10:00",
+          ""
+        ],
+        [
+          "十块钱",
+          "shí kuài qián"
+        ],
+        [
+          "十本书",
+          "shí běn shū"
+        ]
+      ],
+      "10:5": [
+        [
+          "不贵",
+          "bú guì"
+        ],
+        [
+          "很好看",
+          "hěn hǎokàn"
+        ],
+        [
+          "120元",
+          "yìbǎi èrshí yuán"
+        ]
+      ],
+      "10:9": [
+        [
+          "很多",
+          "hěn duō"
+        ],
+        [
+          "真贵",
+          "zhēn guì"
+        ],
+        [
+          "不好看",
+          "bù hǎokàn"
+        ]
+      ],
+      "10:10": [
+        [
+          "很少",
+          "hěn shǎo"
+        ],
+        [
+          "很便宜",
+          "hěn piányi"
+        ],
+        [
+          "很漂亮",
+          "hěn piàoliang"
+        ]
+      ],
+      "11:4": [
+        [
+          "不吃午饭",
+          "bù chī wǔfàn"
+        ],
+        [
+          "在外边玩",
+          "zài wàibian wán"
+        ],
+        [
+          "水果便宜",
+          "shuǐguǒ piányi"
+        ]
+      ],
+      "11:5": [
+        [
+          "能到",
+          "néng dào"
+        ],
+        [
+          "想去呢",
+          "xiǎng qù ne"
+        ],
+        [
+          "没到呢",
+          "méi dào ne"
+        ]
+      ],
+      "11:9": [
+        [
+          "超市",
+          "chāoshì"
+        ],
+        [
+          "外边",
+          "wàibian"
+        ],
+        [
+          "房间里",
+          "fángjiān li"
+        ]
+      ],
+      "11:10": [
+        [
+          "学校后边",
+          "xuéxiào hòubian"
+        ],
+        [
+          "超市前边",
+          "chāoshì qiánbian"
+        ],
+        [
+          "超市后边",
+          "chāoshì hòubian"
+        ]
+      ],
+      "12:4": [
+        [
+          "在吃药",
+          "zài chī yào"
+        ],
+        [
+          "有点儿",
+          "yǒudiǎnr"
+        ],
+        [
+          "不太好",
+          "bú tài hǎo"
+        ]
+      ],
+      "12:5": [
+        [
+          "下雪了",
+          "xià xuě le"
+        ],
+        [
+          "太热了",
+          "tài rè le"
+        ],
+        [
+          "不喝水",
+          "bù hē shuǐ"
+        ]
+      ],
+      "12:9": [
+        [
+          "看医生",
+          "kàn yīshēng"
+        ],
+        [
+          "看朋友",
+          "kàn péngyou"
+        ],
+        [
+          "看病人",
+          "kàn bìngrén"
+        ]
+      ],
+      "12:10": [
+        [
+          "工作",
+          "gōngzuò"
+        ],
+        [
+          "休息",
+          "xiūxi"
+        ],
+        [
+          "读书",
+          "dúshū"
+        ]
+      ],
+      "13:4": [
+        [
+          "给你",
+          "gěi nǐ"
+        ],
+        [
+          "吃早饭",
+          "chī zǎofàn"
+        ],
+        [
+          "要一杯茶",
+          "yào yì bēi chá"
+        ]
+      ],
+      "13:5": [
+        [
+          "学习",
+          "xuéxí"
+        ],
+        [
+          "不对",
+          "bú duì"
+        ],
+        [
+          "没问题",
+          "méi wèntí"
+        ]
+      ],
+      "13:9": [
+        [
+          "问问题",
+          "wèn wèntí"
+        ],
+        [
+          "找人玩",
+          "zhǎo rén wán"
+        ],
+        [
+          "看医生",
+          "kàn yīshēng"
+        ]
+      ],
+      "13:10": [
+        [
+          "饭店",
+          "fàndiàn"
+        ],
+        [
+          "学校",
+          "xuéxiào"
+        ],
+        [
+          "朋友家",
+          "péngyou jiā"
+        ]
+      ],
+      "14:4": [
+        [
+          "都写",
+          "dōu xiě"
+        ],
+        [
+          "听见了",
+          "tīngjiàn le"
+        ],
+        [
+          "都会写了",
+          "dōu huì xiě le"
+        ]
+      ],
+      "14:5": [
+        [
+          "学习",
+          "xuéxí"
+        ],
+        [
+          "超市",
+          "chāoshì"
+        ],
+        [
+          "买面包",
+          "mǎi miànbāo"
+        ]
+      ],
+      "14:9": [
+        [
+          "下课后",
+          "xiàkè hòu"
+        ],
+        [
+          "上课前",
+          "shàngkè qián"
+        ],
+        [
+          "回家后",
+          "huí jiā hòu"
+        ]
+      ],
+      "14:10": [
+        [
+          "小狗",
+          "xiǎo gǒu"
+        ],
+        [
+          "小猫",
+          "xiǎo māo"
+        ],
+        [
+          "小狗和小猫",
+          "xiǎo gǒu hé xiǎo māo"
+        ]
+      ],
+      "15:4": [
+        [
+          "太早了",
+          "tài zǎo le"
+        ],
+        [
+          "没睡觉",
+          "méi shuìjiào"
+        ],
+        [
+          "不想去",
+          "bù xiǎng qù"
+        ]
+      ],
+      "15:5": [
+        [
+          "很多",
+          "hěn duō"
+        ],
+        [
+          "也不贵",
+          "yě bú guì"
+        ],
+        [
+          "也很好看",
+          "yě hěn hǎokàn"
+        ]
+      ],
+      "15:9": [
+        [
+          "西安",
+          "Xī'ān"
+        ],
+        [
+          "北京",
+          "Běijīng"
+        ],
+        [
+          "上海",
+          "Shànghǎi"
+        ]
+      ],
+      "15:10": [
+        [
+          "坐飞机",
+          "zuò fēijī"
+        ],
+        [
+          "坐火车",
+          "zuò huǒchē"
+        ],
+        [
+          "坐出租车",
+          "zuò chūzūchē"
+        ]
+      ],
+      "0:6": [
+        [
+          "哪里",
+          "nǎlǐ"
+        ],
+        [
+          "打电话",
+          "dǎ diànhuà"
+        ],
+        [
+          "做饭好吃",
+          "zuò fàn hǎochī"
+        ]
+      ],
+      "0:7": [
+        [
+          "白天",
+          "báitiān"
+        ],
+        [
+          "生病了",
+          "shēngbìng le"
+        ],
+        [
+          "水果店",
+          "shuǐguǒdiàn"
+        ]
+      ],
+      "0:8": [
+        [
+          "八元",
+          "bā yuán"
+        ],
+        [
+          "不是",
+          "bú shì"
+        ],
+        [
+          "便宜",
+          "piányi"
+        ]
+      ],
+      "0:9": [
+        [
+          "去年",
+          "qùnián"
+        ],
+        [
+          "很漂亮",
+          "hěn piàoliang"
+        ],
+        [
+          "我弟弟",
+          "wǒ dìdi"
+        ]
+      ],
+      "0:10": [
+        [
+          "没有",
+          "méiyǒu"
+        ],
+        [
+          "再见",
+          "zàijiàn"
+        ],
+        [
+          "不要",
+          "bú yào"
+        ]
+      ],
+      "0:16": [
+        [
+          "60岁",
+          "liùshí suì"
+        ],
+        [
+          "60多岁",
+          "liùshí duō suì"
+        ],
+        [
+          "70岁",
+          "qīshí suì"
+        ]
+      ],
+      "0:17": [
+        [
+          "电脑",
+          "diànnǎo"
+        ],
+        [
+          "杯子",
+          "bēizi"
+        ],
+        [
+          "手机",
+          "shǒujī"
+        ]
+      ],
+      "0:18": [
+        [
+          "女儿",
+          "nǚ'ér"
+        ],
+        [
+          "妹妹",
+          "mèimei"
+        ],
+        [
+          "高女士",
+          "Gāo nǚshì"
+        ]
+      ],
+      "0:19": [
+        [
+          "包子",
+          "bāozi"
+        ],
+        [
+          "面包",
+          "miànbāo"
+        ],
+        [
+          "面条儿",
+          "miàntiáor"
+        ]
+      ],
+      "0:20": [
+        [
+          "早上",
+          "zǎoshang"
+        ],
+        [
+          "中午",
+          "zhōngwǔ"
+        ],
+        [
+          "星期天",
+          "Xīngqītiān"
+        ]
+      ]
+    },
+    "2": {
+      "0:16": [
+        [
+          "家里",
+          "jiā li"
+        ],
+        [
+          "饭馆",
+          "fànguǎn"
+        ],
+        [
+          "电影院",
+          "diànyǐngyuàn"
+        ]
+      ],
+      "0:17": [
+        [
+          "上课",
+          "shàngkè"
+        ],
+        [
+          "游泳",
+          "yóuyǒng"
+        ],
+        [
+          "踢球",
+          "tī qiú"
+        ]
+      ],
+      "0:18": [
+        [
+          "药店",
+          "yàodiàn"
+        ],
+        [
+          "学校",
+          "xuéxiào"
+        ],
+        [
+          "咖啡店",
+          "kāfēidiàn"
+        ]
+      ],
+      "0:19": [
+        [
+          "走路",
+          "zǒulù"
+        ],
+        [
+          "做菜",
+          "zuò cài"
+        ],
+        [
+          "吃饭",
+          "chī fàn"
+        ]
+      ],
+      "0:20": [
+        [
+          "东西贵",
+          "dōngxi guì"
+        ],
+        [
+          "不太近",
+          "bú tài jìn"
+        ],
+        [
+          "东西不好",
+          "dōngxi bù hǎo"
+        ]
+      ],
+      "0:21": [
+        [
+          "打车",
+          "dǎchē"
+        ],
+        [
+          "坐地铁",
+          "zuò dìtiě"
+        ],
+        [
+          "坐公交车",
+          "zuò gōngjiāochē"
+        ]
+      ],
+      "0:22": [
+        [
+          "休息",
+          "xiūxi"
+        ],
+        [
+          "去跑步",
+          "qù pǎobù"
+        ],
+        [
+          "洗衣服",
+          "xǐ yīfu"
+        ]
+      ],
+      "0:23": [
+        [
+          "今天",
+          "jīntiān"
+        ],
+        [
+          "星期六",
+          "Xīngqīliù"
+        ],
+        [
+          "星期天",
+          "Xīngqītiān"
+        ]
+      ],
+      "0:24": [
+        [
+          "火车站",
+          "huǒchēzhàn"
+        ],
+        [
+          "火车上",
+          "huǒchē shang"
+        ],
+        [
+          "出租车上",
+          "chūzūchē shang"
+        ]
+      ],
+      "0:25": [
+        [
+          "商店",
+          "shāngdiàn"
+        ],
+        [
+          "超市",
+          "chāoshì"
+        ],
+        [
+          "水果店",
+          "shuǐguǒdiàn"
+        ]
+      ]
+    },
+    "3": {
+      "0:11": [
+        [
+          "书店",
+          "shūdiàn"
+        ],
+        [
+          "朋友家",
+          "péngyou jiā"
+        ],
+        [
+          "图书馆",
+          "túshūguǎn"
+        ]
+      ],
+      "0:12": [
+        [
+          "游泳",
+          "yóuyǒng"
+        ],
+        [
+          "踢足球",
+          "tī zúqiú"
+        ],
+        [
+          "打羽毛球",
+          "dǎ yǔmáoqiú"
+        ]
+      ],
+      "0:13": [
+        [
+          "头疼",
+          "tóuténg"
+        ],
+        [
+          "发烧",
+          "fāshāo"
+        ],
+        [
+          "眼睛不舒服",
+          "yǎnjing bù shūfu"
+        ]
+      ],
+      "0:14": [
+        [
+          "行李多",
+          "xíngli duō"
+        ],
+        [
+          "时间不多",
+          "shíjiān bù duō"
+        ],
+        [
+          "天气不好",
+          "tiānqì bù hǎo"
+        ]
+      ],
+      "0:15": [
+        [
+          "牛奶",
+          "niúnǎi"
+        ],
+        [
+          "咖啡",
+          "kāfēi"
+        ],
+        [
+          "奶茶",
+          "nǎichá"
+        ]
+      ],
+      "0:16": [
+        [
+          "商店",
+          "shāngdiàn"
+        ],
+        [
+          "医院",
+          "yīyuàn"
+        ],
+        [
+          "学校",
+          "xuéxiào"
+        ]
+      ],
+      "0:17": [
+        [
+          "爬山",
+          "pá shān"
+        ],
+        [
+          "骑车",
+          "qí chē"
+        ],
+        [
+          "去水上公园",
+          "qù shuǐshàng gōngyuán"
+        ]
+      ],
+      "0:18": [
+        [
+          "把书还给他",
+          "bǎ shū huán gěi tā"
+        ],
+        [
+          "帮他借一本书",
+          "bāng tā jiè yì běn shū"
+        ],
+        [
+          "再去买一本书",
+          "zài qù mǎi yì běn shū"
+        ]
+      ],
+      "0:19": [
+        [
+          "夏天",
+          "xiàtiān"
+        ],
+        [
+          "秋天",
+          "qiūtiān"
+        ],
+        [
+          "冬天",
+          "dōngtiān"
+        ]
+      ],
+      "0:20": [
+        [
+          "唱得很好听",
+          "chàng de hěn hǎotīng"
+        ],
+        [
+          "跳得不太好",
+          "tiào de bú tài hǎo"
+        ],
+        [
+          "跳得好极了",
+          "tiào de hǎo jí le"
+        ]
+      ],
+      "0:21": [
+        [
+          "坐飞机",
+          "zuò fēijī"
+        ],
+        [
+          "送朋友",
+          "sòng péngyou"
+        ],
+        [
+          "接哥哥",
+          "jiē gēge"
+        ]
+      ],
+      "0:22": [
+        [
+          "做练习",
+          "zuò liànxí"
+        ],
+        [
+          "看故事书",
+          "kàn gùshìshū"
+        ],
+        [
+          "听中文歌",
+          "tīng Zhōngwén gē"
+        ]
+      ],
+      "0:23": [
+        [
+          "周四下午三点",
+          "zhōusì xiàwǔ sān diǎn"
+        ],
+        [
+          "周五下午四点",
+          "zhōuwǔ xiàwǔ sì diǎn"
+        ],
+        [
+          "周一上午十点",
+          "zhōuyī shàngwǔ shí diǎn"
+        ]
+      ],
+      "0:24": [
+        [
+          "黑色的裤子",
+          "hēisè de kùzi"
+        ],
+        [
+          "黄色的裙子",
+          "huángsè de qúnzi"
+        ],
+        [
+          "白色的上衣",
+          "báisè de shàngyī"
+        ]
+      ],
+      "0:25": [
+        [
+          "很便宜",
+          "hěn piányi"
+        ],
+        [
+          "上菜很快",
+          "shàng cài hěn kuài"
+        ],
+        [
+          "每个菜都很好吃",
+          "měi ge cài dōu hěn hǎochī"
+        ]
+      ],
+      "0:26": [
+        [
+          "不看笔记",
+          "bú kàn bǐjì"
+        ],
+        [
+          "不做练习",
+          "bú zuò liànxí"
+        ],
+        [
+          "先复习错题",
+          "xiān fùxí cuòtí"
+        ]
+      ],
+      "0:27": [
+        [
+          "更瘦了",
+          "gèng shòu le"
+        ],
+        [
+          "更健康了",
+          "gèng jiànkāng le"
+        ],
+        [
+          "更开心了",
+          "gèng kāixīn le"
+        ]
+      ],
+      "0:28": [
+        [
+          "很新鲜",
+          "hěn xīnxiān"
+        ],
+        [
+          "有点儿贵",
+          "yǒudiǎnr guì"
+        ],
+        [
+          "又大又甜",
+          "yòu dà yòu tián"
+        ]
+      ],
+      "0:29": [
+        [
+          "可以看电影",
+          "kěyǐ kàn diànyǐng"
+        ],
+        [
+          "可以拍照片",
+          "kěyǐ pāi zhàopiàn"
+        ],
+        [
+          "可以玩游戏",
+          "kěyǐ wán yóuxì"
+        ]
+      ],
+      "0:30": [
+        [
+          "坐车时",
+          "zuò chē shí"
+        ],
+        [
+          "等人时",
+          "děng rén shí"
+        ],
+        [
+          "睡觉前",
+          "shuìjiào qián"
+        ]
+      ]
+    }
+  },
+  "guidedAnswers": {
+    "1:practice-06": {
+      "page": 2,
+      "instruction": "Nghe và điền 15 thanh mẫu còn thiếu, theo thứ tự từ trái sang phải trong hình. Sau đó đọc to các âm tiết.",
+      "parts": [
+        "d",
+        "g",
+        "p",
+        "b",
+        "m",
+        "l",
+        "f",
+        "h",
+        "t",
+        "h",
+        "b",
+        "d",
+        "k",
+        "n",
+        "m"
+      ]
+    },
+    "1:practice-07": {
+      "page": 2,
+      "instruction": "Nghe và điền 15 vận mẫu còn thiếu, kèm dấu thanh, theo thứ tự từ trái sang phải trong hình. Sau đó đọc to các âm tiết.",
+      "parts": [
+        "ā",
+        "ěn",
+        "āo",
+        "ì",
+        "áng",
+        "ōng",
+        "àn",
+        "ǒu",
+        "éng",
+        "ē",
+        "āi",
+        "ēi",
+        "ù",
+        "ěng",
+        "ō"
+      ]
+    },
+    "1:practice-08": {
+      "page": 2,
+      "instruction": "Nghe và viết lại 12 âm tiết kèm dấu thanh, theo thứ tự trong hình. Sau đó đọc to.",
+      "parts": [
+        "lǎo",
+        "néng",
+        "gè",
+        "bā",
+        "fēn",
+        "kàn",
+        "bái",
+        "lǐ",
+        "gōng",
+        "máng",
+        "gǒu",
+        "hòu"
+      ]
+    },
+    "2:practice-10": {
+      "page": 3,
+      "instruction": "Nghe và điền 9 thanh mẫu còn thiếu, theo thứ tự trong hình. Sau đó đọc to các âm tiết.",
+      "parts": [
+        "q",
+        "j",
+        "x",
+        "j",
+        "x",
+        "q",
+        "j",
+        "q",
+        "x"
+      ]
+    },
+    "2:practice-11": {
+      "page": 3,
+      "instruction": "Nghe và điền 15 vận mẫu còn thiếu, kèm dấu thanh, theo thứ tự trong hình. Khi ghép với j, q, x, chữ ü được viết bỏ hai dấu chấm. Sau đó đọc to.",
+      "parts": [
+        "iàn",
+        "iè",
+        "ù",
+        "iǎo",
+        "īng",
+        "ué",
+        "iào",
+        "ìng",
+        "iě",
+        "ián",
+        "iān",
+        "ǐ",
+        "iā",
+        "iū",
+        "uán"
+      ]
+    },
+    "2:practice-12": {
+      "page": 3,
+      "instruction": "Nghe và viết lại 12 âm tiết kèm dấu thanh, theo thứ tự trong hình. Sau đó đọc to.",
+      "parts": [
+        "xué",
+        "jiào",
+        "qún",
+        "jiǔ",
+        "xīn",
+        "qǐng",
+        "xià",
+        "jiā",
+        "qù",
+        "jī",
+        "xiǎo",
+        "jiě"
+      ]
+    },
+    "3:practice-06": {
+      "page": 4,
+      "instruction": "Nghe và điền 12 thanh mẫu còn thiếu, theo thứ tự trong hình. Sau đó đọc to các âm tiết.",
+      "parts": [
+        "s",
+        "ch",
+        "z",
+        "zh",
+        "z",
+        "ch",
+        "r",
+        "s",
+        "c",
+        "sh",
+        "r",
+        "zh"
+      ]
+    },
+    "3:practice-07": {
+      "page": 4,
+      "instruction": "Nghe và điền 15 vận mẫu còn thiếu, kèm dấu thanh, theo thứ tự trong hình. Sau đó đọc to các âm tiết.",
+      "parts": [
+        "ū",
+        "ī",
+        "ài",
+        "ì",
+        "āo",
+        "èn",
+        "àng",
+        "ěn",
+        "ì",
+        "ān",
+        "uān",
+        "è",
+        "uō",
+        "óng",
+        "éi"
+      ]
+    },
+    "3:practice-08": {
+      "page": 4,
+      "instruction": "Nghe và viết lại 15 âm tiết kèm dấu thanh, theo thứ tự trong hình. Sau đó đọc to.",
+      "parts": [
+        "chē",
+        "rén",
+        "chàng",
+        "zǎo",
+        "shǒu",
+        "zhēn",
+        "suì",
+        "shēng",
+        "rì",
+        "zhōng",
+        "shuǐ",
+        "zuò",
+        "chuáng",
+        "shū",
+        "sì"
+      ]
+    },
+    "4:practice-04": {
+      "page": 5,
+      "instruction": "Nghe và chọn âm tiết đúng trong mỗi cặp ở hình. Nhập 8 âm tiết đã chọn theo thứ tự, rồi đọc to.",
+      "parts": [
+        "pā",
+        "zì",
+        "láng",
+        "jǔ",
+        "mén",
+        "rù",
+        "kè",
+        "qǐng"
+      ]
+    },
+    "5:practice-04": {
+      "page": 7,
+      "instruction": "Nghe và chọn âm tiết đúng trong mỗi cặp ở hình. Nhập 8 âm tiết đã chọn theo thứ tự, rồi đọc to.",
+      "parts": [
+        "gē",
+        "qiǎng",
+        "sóng",
+        "nìng",
+        "jiā",
+        "cuàn",
+        "tōu",
+        "shí"
+      ]
+    },
+    "6:practice-03": {
+      "page": 9,
+      "instruction": "Nghe và chọn từ hai âm tiết đúng trong mỗi cặp ở hình. Nhập 6 đáp án theo thứ tự, rồi đọc to.",
+      "parts": [
+        "nàbiān",
+        "dōngxi",
+        "chāoshì",
+        "wǎnfàn",
+        "shǒujī",
+        "diànhuà"
+      ]
+    },
+    "8:practice-01": {
+      "page": 12,
+      "instruction": "Nghe và chọn âm tiết đúng trong mỗi cặp ở hình. Nhập 8 âm tiết đã chọn theo thứ tự, rồi đọc to.",
+      "parts": [
+        "nián",
+        "rén",
+        "tiē",
+        "chǎn",
+        "lüè",
+        "hún",
+        "bīng",
+        "kǒng"
+      ]
+    },
+    "8:practice-02": {
+      "page": 12,
+      "instruction": "Nghe và chọn từ không phải từ láy hoặc dạng lặp trong mỗi nhóm. Nhập 4 chữ cái A, B hoặc C theo thứ tự.",
+      "parts": [
+        "B",
+        "C",
+        "B",
+        "A"
+      ]
+    },
+    "9:practice-01": {
+      "page": 14,
+      "instruction": "Nghe và thêm dấu thanh cho 8 từ pinyin trong hình. Nhập lại từ có dấu rồi đọc to.",
+      "parts": [
+        "hǎo",
+        "xiè",
+        "nín",
+        "zhōng",
+        "tóngxué",
+        "dàjiā",
+        "zàijiàn",
+        "rènshi"
+      ]
+    },
+    "9:practice-02": {
+      "page": 14,
+      "instruction": "Chọn âm tiết có thanh điệu khác với hai âm tiết còn lại trong mỗi nhóm. Nhập 4 chữ cái A, B hoặc C theo thứ tự.",
+      "parts": [
+        "B",
+        "A",
+        "C",
+        "C"
+      ]
+    },
+    "10:practice-01": {
+      "page": 16,
+      "instruction": "Nghe và thêm dấu thanh cho 8 từ pinyin trong hình. Nhập lại từ có dấu rồi đọc to.",
+      "parts": [
+        "duì",
+        "jiā",
+        "guó",
+        "xiǎng",
+        "chāoshì",
+        "niúnǎi",
+        "shàngwǔ",
+        "diànyǐng"
+      ]
+    },
+    "10:practice-02": {
+      "page": 16,
+      "instruction": "Chọn âm tiết có thanh điệu khác với hai âm tiết còn lại trong mỗi nhóm. Nhập 5 chữ cái A, B hoặc C theo thứ tự.",
+      "parts": [
+        "C",
+        "B",
+        "B",
+        "A",
+        "C"
+      ]
+    },
+    "11:practice-01": {
+      "page": 18,
+      "instruction": "Nghe và thêm dấu thanh cho 8 từ pinyin trong hình. Nhập lại từ có dấu rồi đọc to.",
+      "parts": [
+        "chàng",
+        "lěng",
+        "huí",
+        "shuìjiào",
+        "píngguǒ",
+        "jīdàn",
+        "dàxuéshēng",
+        "diànyǐngyuàn"
+      ]
+    },
+    "11:practice-02": {
+      "page": 18,
+      "instruction": "Chọn âm tiết có thanh điệu khác với hai âm tiết còn lại trong mỗi nhóm. Nhập 5 chữ cái A, B hoặc C theo thứ tự.",
+      "parts": [
+        "A",
+        "C",
+        "C",
+        "B",
+        "B"
+      ]
+    },
+    "12:practice-01": {
+      "page": 20,
+      "instruction": "Chọn âm tiết có thanh điệu khác với hai âm tiết còn lại trong mỗi nhóm. Nhập 4 chữ cái A, B hoặc C theo thứ tự.",
+      "parts": [
+        "B",
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "12:practice-02": {
+      "page": 20,
+      "instruction": "Nghe và ghép số thứ tự âm tiết với từ Hán tương ứng. Điền số theo thứ tự các từ ở cột bên phải: 你好, 老师, 谢谢, 孩子, 名字, 中国. Mục đầu là ví dụ.",
+      "parts": [
+        "1",
+        "4",
+        "6",
+        "5",
+        "2",
+        "3"
+      ]
+    },
+    "13:practice-01": {
+      "page": 22,
+      "instruction": "Chọn âm tiết có thanh điệu khác với hai âm tiết còn lại trong mỗi nhóm. Nhập 4 chữ cái A, B hoặc C theo thứ tự.",
+      "parts": [
+        "B",
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "13:practice-02": {
+      "page": 22,
+      "instruction": "Nghe và ghép số thứ tự âm tiết với từ Hán tương ứng. Điền số theo thứ tự: 你好, 饺子, 公司, 朋友, 先生, 工作. Mục đầu là ví dụ.",
+      "parts": [
+        "1",
+        "5",
+        "2",
+        "6",
+        "3",
+        "4"
+      ]
+    },
+    "14:practice-01": {
+      "page": 24,
+      "instruction": "Nghe và ghép số thứ tự âm tiết với từ Hán tương ứng. Điền số theo thứ tự: 你好, 女儿, 好玩儿, 没关系, 男朋友, 不客气. Mục đầu là ví dụ.",
+      "parts": [
+        "1",
+        "5",
+        "6",
+        "2",
+        "3",
+        "4"
+      ]
+    },
+    "14:practice-02": {
+      "page": 24,
+      "instruction": "Nghe và phân loại 6 câu trong hình: A là câu trần thuật, B là câu hỏi. Nhập 6 chữ cái theo thứ tự; câu đầu là ví dụ.",
+      "parts": [
+        "B",
+        "B",
+        "A",
+        "A",
+        "B",
+        "A"
+      ]
+    },
+    "15:practice-01": {
+      "page": 26,
+      "instruction": "Nghe và ghép số thứ tự âm tiết với từ Hán tương ứng. Điền số theo thứ tự: 你好, 说话, 坐飞机, 没看见, 哪些人, 什么时候. Mục đầu là ví dụ.",
+      "parts": [
+        "1",
+        "4",
+        "6",
+        "2",
+        "3",
+        "5"
+      ]
+    },
+    "15:practice-02": {
+      "page": 26,
+      "instruction": "Nghe và phân loại 6 câu: A trần thuật, B câu hỏi, C cảm thán, D cầu khiến. Nhập 6 chữ cái theo thứ tự.",
+      "parts": [
+        "B",
+        "A",
+        "C",
+        "B",
+        "D",
+        "B"
+      ]
+    }
+  }
+}
