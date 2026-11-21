@@ -4,6 +4,12 @@ import { LearningAttemptEntity } from './infrastructure/persistence/relational/e
 import { emptyProgress } from './score-types';
 import { DataSource } from 'typeorm';
 import { LearningScoresService } from './learning-scores.service';
+
+// Payment authorization has its own PostgreSQL integration coverage; these mocks
+// exercise scoring/history transactions without adding unrelated repositories.
+jest.mock('../exams/exam-access', () => ({
+  assertExamAccess: jest.fn().mockResolvedValue(undefined),
+}));
 describe('Learning history ownership', () => {
   it('should scope lookup to the authenticated user even with a valid foreign UUID', async () => {
     const findOne = jest.fn().mockResolvedValue(null);

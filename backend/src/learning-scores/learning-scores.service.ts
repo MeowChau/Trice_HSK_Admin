@@ -9,6 +9,7 @@ import { DataSource, EntityManager } from 'typeorm';
 import { createHash, randomUUID } from 'crypto';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { ExamEntity } from '../exams/infrastructure/persistence/relational/entities/exam.entity';
+import { assertExamAccess } from '../exams/exam-access';
 import { PracticeSetEntity } from '../practice-sets/infrastructure/persistence/relational/entities/practice-set.entity';
 import { QuestionEntity } from '../questions/infrastructure/persistence/relational/entities/question.entity';
 import type { PronunciationAssessment } from '../ai-proxy/azure-pronunciation';
@@ -204,7 +205,12 @@ export class LearningScoresService {
       throw new ConflictException(
         'Lượt làm này đã được nộp. Hãy bắt đầu lượt mới để ghi âm lại.',
       );
-    const source = await this.source(manager, context.kind, context.sourceId);
+    const source = await this.source(
+      manager,
+      context.kind,
+      context.sourceId,
+      userId,
+    );
     if (
       !source.items.some(
         (item) =>
@@ -274,8 +280,10 @@ export class LearningScoresService {
     manager: EntityManager,
     kind: 'exam' | 'set',
     id: number,
+    userId: number,
   ): Promise<LearningSource> {
     if (kind === 'exam') {
+      await assertExamAccess(manager, id, userId);
       const exam = await manager.getRepository(ExamEntity).findOne({
         where: { id },
         relations: [
@@ -390,7 +398,12 @@ export class LearningScoresService {
                 : user.currentHskLevel,
           };
         }
-        const source = await this.source(manager, dto.kind, dto.sourceId);
+        const source = await this.source(
+          manager,
+          dto.kind,
+          dto.sourceId,
+          userId,
+        );
         const sourceVersion = learningSourceVersion(source);
         if (previousAttempt)
           this.assertAttemptSource(previousAttempt, dto, sourceVersion);
