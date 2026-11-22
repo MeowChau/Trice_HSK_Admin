@@ -189,18 +189,18 @@ export class LeaderboardService {
       };
     });
 
-    // Default sort by currentStreak DESC, then longestStreak DESC, then totalDays DESC, then level DESC
+    // Rank historical achievement within the selected timeframe, even when a
+    // longer streak has ended. Compare exact seconds before presentation rounding.
     leaderboard.sort((a, b) => {
-      if (b.currentStreak !== a.currentStreak) {
-        return b.currentStreak - a.currentStreak;
-      }
       if (b.longestStreak !== a.longestStreak) {
         return b.longestStreak - a.longestStreak;
       }
       if (b.totalDays !== a.totalDays) {
         return b.totalDays - a.totalDays;
       }
-      return b.level - a.level;
+      const aSeconds = Number(streakMap.get(a.id)?.totalSeconds) || 0;
+      const bSeconds = Number(streakMap.get(b.id)?.totalSeconds) || 0;
+      return bSeconds - aSeconds || a.id - b.id;
     });
 
     // 3. Compute KPI Summaries
@@ -208,7 +208,14 @@ export class LeaderboardService {
       (max, item) => Math.max(max, item.longestStreak),
       0,
     );
-    const topStreakItem = leaderboard[0];
+    // This KPI describes the ongoing streak, independently of the ranking.
+    const topStreakItem = leaderboard.reduce<
+      (typeof leaderboard)[number] | undefined
+    >(
+      (top, item) =>
+        !top || item.currentStreak > top.currentStreak ? item : top,
+      undefined,
+    );
     const topStreak = topStreakItem ? topStreakItem.currentStreak : 0;
     const topStreakUser =
       topStreak > 0 && topStreakItem ? topStreakItem.fullName : null;

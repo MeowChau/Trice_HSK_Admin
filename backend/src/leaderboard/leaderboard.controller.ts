@@ -43,7 +43,8 @@ export class LeaderboardController {
     name: 'metric',
     required: false,
     enum: ['streak', 'exp'],
-    description: 'Ranking metric; defaults to streak. EXP uses timeframe=all.',
+    description:
+      'Streak ranks the longest consecutive recorded-day streak, then total days and exact study duration within the selected timeframe. EXP uses timeframe=all.',
   })
   @ApiQuery({
     name: 'hskLevel',
@@ -55,7 +56,8 @@ export class LeaderboardController {
     name: 'timeframe',
     required: false,
     enum: ['all', 'month', 'week'],
-    description: 'Filter time boundary',
+    description:
+      'Streak window: all history, current Vietnam calendar month, or the latest seven Vietnam dates. Current streak is displayed separately from the ranking.',
   })
   @ApiQuery({
     name: 'limit',
