@@ -7,7 +7,10 @@ import {
 import { Test } from '@nestjs/testing';
 import { AuthGuard } from '@nestjs/passport';
 import request from 'supertest';
-import { ExamsController } from '../exams/exams.controller';
+import {
+  ExamsController,
+  OptionalExamAuthGuard,
+} from '../exams/exams.controller';
 import { ExamsService } from '../exams/exams.service';
 import { VocabularyController } from '../vocabulary/vocabulary.controller';
 import { VocabularyService } from '../vocabulary/vocabulary.service';
@@ -18,6 +21,9 @@ import { PracticeSetsService } from '../practice-sets/practice-sets.service';
 import validationOptions from './validation-options';
 import type { RequestWithUser } from './types/request-with-user.type';
 import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
+import { DataSource } from 'typeorm';
+import { ExamEntity } from '../exams/infrastructure/persistence/relational/entities/exam.entity';
+import { ExamPurchaseEntity } from '../exams/infrastructure/persistence/relational/entities/exam-purchase.entity';
 
 describe('Content HTTP authorization and validation', () => {
   let app: INestApplication;
@@ -55,6 +61,43 @@ describe('Content HTTP authorization and validation', () => {
     student: 'Bearer student',
     blocked: 'Bearer blocked',
   };
+  const purchases = jest.fn();
+  const db = {
+    manager: {
+      getRepository(entity: unknown) {
+        if (entity === ExamPurchaseEntity) return { find: purchases };
+        if (entity !== ExamEntity) throw new Error('Unexpected repository');
+        const query = {
+          select: () => query,
+          groupBy: () => query,
+          // Two different HSK levels each have a free sample in this fixture.
+          getRawMany: () => Promise.resolve([{ id: 1 }, { id: 2 }]),
+        };
+        return { createQueryBuilder: () => query };
+      },
+    },
+  };
+  const authenticate = {
+    canActivate(ctx: ExecutionContext) {
+      const req = ctx
+        .switchToHttp()
+        .getRequest<RequestWithUser<JwtPayloadType>>();
+      const auth = req.headers.authorization;
+      if (!Object.values(headers).includes(auth || ''))
+        throw new UnauthorizedException();
+      const role =
+        auth === headers.admin ? 1 : auth === headers.teacher ? 3 : 2;
+      req.user = {
+        id: 7,
+        role: { id: role },
+        status: { id: auth === headers.blocked ? 2 : 1 },
+        sessionId: 10,
+        iat: 1,
+        exp: 9999999999,
+      };
+      return true;
+    },
+  };
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -69,28 +112,18 @@ describe('Content HTTP authorization and validation', () => {
         { provide: VocabularyService, useValue: vocab },
         { provide: QuestionsService, useValue: questions },
         { provide: PracticeSetsService, useValue: practice },
+        { provide: DataSource, useValue: db },
       ],
     })
       .overrideGuard(AuthGuard('jwt'))
+      .useValue(authenticate)
+      .overrideGuard(OptionalExamAuthGuard)
       .useValue({
         canActivate(ctx: ExecutionContext) {
           const req = ctx
             .switchToHttp()
             .getRequest<RequestWithUser<JwtPayloadType>>();
-          const auth = req.headers.authorization;
-          if (!Object.values(headers).includes(auth || ''))
-            throw new UnauthorizedException();
-          const role =
-            auth === headers.admin ? 1 : auth === headers.teacher ? 3 : 2;
-          req.user = {
-            id: 7,
-            role: { id: role },
-            status: { id: auth === headers.blocked ? 2 : 1 },
-            sessionId: 10,
-            iat: 1,
-            exp: 9999999999,
-          };
-          return true;
+          return !req.headers.authorization || authenticate.canActivate(ctx);
         },
       })
       .compile();
@@ -104,6 +137,7 @@ describe('Content HTTP authorization and validation', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    purchases.mockResolvedValue([]);
   });
 
   const writes: [string, string, object][] = [
@@ -263,22 +297,78 @@ describe('Content HTTP authorization and validation', () => {
     exams.getDetails.mockImplementation((id: number) => ({
       id,
       title: `Exam ${id}`,
+      hskLevel: id,
       sections: [],
     }));
-    await request(app.getHttpServer())
-      .get('/exams/1')
-      .expect(200, { id: 1, title: 'Exam 1', sections: [] });
-    await request(app.getHttpServer())
-      .get('/exams/2')
-      .expect(200, { id: 2, title: 'Exam 2', sections: [] });
+    for (const id of [1, 2]) {
+      const response = await request(app.getHttpServer())
+        .get(`/exams/${id}`)
+        .expect(200);
+      expect(response.body).toMatchObject({
+        id,
+        title: `Exam ${id}`,
+        sections: [],
+        totalQuestions: 0,
+        access: { isFree: true, canAttempt: true, price: 0 },
+      });
+    }
     exams.getDetails.mockImplementation((id: number) => ({
       id,
       title: 'Updated',
       sections: [],
     }));
-    await request(app.getHttpServer())
+    const refreshed = await request(app.getHttpServer())
       .get('/exams/1')
-      .expect(200, { id: 1, title: 'Updated', sections: [] });
+      .expect(200);
+    expect(refreshed.body).toMatchObject({
+      id: 1,
+      title: 'Updated',
+      sections: [],
+      totalQuestions: 0,
+    });
+  });
+
+  it('should hide paid exam questions and audio until the authenticated user has access', async () => {
+    exams.getDetails.mockResolvedValue({
+      id: 3,
+      title: 'Paid exam',
+      hskLevel: 1,
+      sections: [
+        {
+          id: 30,
+          title: 'Listening',
+          order: 0,
+          audioUrl: '/private-audio.mp3',
+          sectionQuestions: [{ questionId: 8, order: 0, question: null }],
+        },
+      ],
+    });
+    for (const auth of [undefined, headers.student]) {
+      const call = request(app.getHttpServer()).get('/exams/3');
+      if (auth) call.set('Authorization', auth);
+      const response = await call.expect(200);
+      expect(response.body.access).toMatchObject({
+        isFree: false,
+        isPurchased: false,
+        canAttempt: false,
+      });
+      expect(response.body.sections[0]).toMatchObject({
+        questionCount: 1,
+        sectionQuestions: [],
+        audioUrl: null,
+      });
+      expect(response.headers['cache-control']).toBe('private, no-store');
+    }
+    purchases.mockResolvedValue([{ examId: 3 }]);
+    const purchased = await request(app.getHttpServer())
+      .get('/exams/3')
+      .set('Authorization', headers.student)
+      .expect(200);
+    expect(purchased.body.access).toMatchObject({
+      isPurchased: true,
+      canAttempt: true,
+    });
+    expect(purchased.body.sections[0].sectionQuestions).toHaveLength(1);
   });
 
   it('should protect editor answers while public details omit answers, transcripts and raw OCR', async () => {

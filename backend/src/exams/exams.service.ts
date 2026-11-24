@@ -55,7 +55,15 @@ export class ExamsService {
       );
     }
 
-    query.orderBy('exam.id', 'DESC').skip(skip).take(limit);
+    query
+      .addSelect(
+        'CASE WHEN exam.id = (SELECT MIN(sample.id) FROM exam sample WHERE sample."hskLevel" = exam."hskLevel" AND sample."deletedAt" IS NULL) THEN 0 ELSE 1 END',
+        'freeOrder',
+      )
+      .orderBy('"freeOrder"', 'ASC')
+      .addOrderBy('exam.id', 'DESC')
+      .skip(skip)
+      .take(limit);
 
     const [data, total] = await query.getManyAndCount();
 

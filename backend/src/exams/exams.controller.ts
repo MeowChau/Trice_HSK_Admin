@@ -31,6 +31,8 @@ import { publicExam } from './exam-view';
 import type { RequestWithUser } from '../utils/types/request-with-user.type';
 import type { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 import { StatusEnum } from '../statuses/statuses.enum';
+import { DataSource } from 'typeorm';
+import { examAccess } from './exam-access';
 
 @Injectable()
 export class OptionalExamAuthGuard extends AuthGuard('jwt') {
@@ -46,7 +48,10 @@ export class OptionalExamAuthGuard extends AuthGuard('jwt') {
 @ApiTags('Exams')
 @Controller({ path: 'exams', version: '1' })
 export class ExamsController {
-  constructor(private readonly examsService: ExamsService) {}
+  constructor(
+    private readonly examsService: ExamsService,
+    private readonly db: DataSource,
+  ) {}
 
   @ContentEditor()
   @Post()
@@ -55,8 +60,22 @@ export class ExamsController {
   }
 
   @Get()
-  findAll(@Query() query: HskQueryDto) {
-    return this.examsService.findAll(query);
+  @UseGuards(OptionalExamAuthGuard)
+  @Header('Cache-Control', 'private, no-store')
+  @Header('Vary', 'Authorization')
+  async findAll(
+    @Query() query: HskQueryDto,
+    @Request() request: RequestWithUser<JwtPayloadType | undefined>,
+  ) {
+    const result = await this.examsService.findAll(query);
+    const access = await examAccess(this.db.manager, result.data, request.user);
+    return {
+      ...result,
+      data: result.data.map((exam) => ({
+        ...publicExam(exam, false, access.get(exam.id)),
+        totalSections: exam.totalSections,
+      })),
+    };
   }
 
   @ContentEditor()
@@ -92,9 +111,14 @@ export class ExamsController {
     @Param('id', ParseIntPipe) id: number,
     @Request() request: RequestWithUser<JwtPayloadType | undefined>,
   ) {
+    const exam = await this.examsService.getDetails(id);
+    const access = (
+      await examAccess(this.db.manager, [exam], request.user)
+    ).get(exam.id)!;
     return publicExam(
-      await this.examsService.getDetails(id),
+      exam,
       Number(request.user?.status?.id) === StatusEnum.active,
+      access,
     );
   }
 

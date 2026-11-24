@@ -16,6 +16,14 @@ import {
   QuestionTypeEnum,
 } from '../../src/questions/infrastructure/persistence/relational/entities/question.enum';
 import { AuditLogEntity } from '../../src/audit-logs/infrastructure/persistence/relational/entities/audit-log.entity';
+import { BadRequestException } from '@nestjs/common';
+import { ExamEntity } from '../../src/exams/infrastructure/persistence/relational/entities/exam.entity';
+import { ExamPaymentEntity } from '../../src/exams/infrastructure/persistence/relational/entities/exam-payment.entity';
+import { ExamPurchaseEntity } from '../../src/exams/infrastructure/persistence/relational/entities/exam-purchase.entity';
+import { ExamPaymentsService } from '../../src/exams/exam-payments.service';
+import { assertExamAccess, examAccess } from '../../src/exams/exam-access';
+import { PayosService } from '../../src/exams/payos.service';
+import type { CreatePaymentLinkRequest } from '@payos/node';
 
 describe('PostgreSQL migrations, transactions and concurrent writes', () => {
   const databaseName = `backend_review_${randomUUID().replace(/-/g, '')}`;
@@ -239,5 +247,186 @@ describe('PostgreSQL migrations, transactions and concurrent writes', () => {
       topic: 'Test',
     });
     expect(vocabulary.topic).toBe('Test');
+  });
+
+  describe('Exam purchases without external payment requests', () => {
+    let nextOrderCode = 1000000000;
+
+    async function fixture() {
+      const viewer = await users.create(user());
+      const repository = database.getRepository(ExamEntity);
+      const free = await repository.save({ title: 'Sample', hskLevel: 9 });
+      const paid = await repository.save({ title: 'Paid', hskLevel: 9 });
+      const paymentLinkId = randomUUID().replace(/-/g, '');
+      const provider = {
+        configured: () => true,
+        returnOrigin: () => 'https://student.example.test',
+        checkoutFor: () => `https://pay.payos.vn/web/${paymentLinkId}`,
+        create: jest.fn((input: CreatePaymentLinkRequest) => ({
+          ...input,
+          paymentLinkId,
+          checkoutUrl: `https://pay.payos.vn/web/${paymentLinkId}`,
+          currency: 'VND',
+          status: 'PENDING',
+        })),
+        get: jest.fn(),
+        verify: jest.fn(),
+      };
+      const payments = new ExamPaymentsService(
+        database,
+        provider as unknown as PayosService,
+      );
+      return { viewer, free, paid, paymentLinkId, provider, payments };
+    }
+
+    async function pending(f: Awaited<ReturnType<typeof fixture>>) {
+      return database.getRepository(ExamPaymentEntity).save({
+        userId: Number(f.viewer.id),
+        examId: f.paid.id,
+        examTitle: f.paid.title,
+        hskLevel: f.paid.hskLevel,
+        orderCode: nextOrderCode++,
+        amount: 2000,
+        currency: 'VND',
+        status: 'pending',
+        paymentLinkId: f.paymentLinkId,
+        expiresAt: new Date(Date.now() + 1800000),
+      });
+    }
+
+    function paidInfo(order: ExamPaymentEntity) {
+      return {
+        id: order.paymentLinkId,
+        orderCode: order.orderCode,
+        amount: order.amount,
+        amountPaid: order.amount,
+        amountRemaining: 0,
+        status: 'PAID',
+      };
+    }
+
+    it('should keep the oldest sample free and reject unpurchased exam attempts', async () => {
+      const f = await fixture();
+      const access = await examAccess(
+        database.manager,
+        [f.free, f.paid],
+        f.viewer,
+      );
+      expect(access.get(f.free.id)?.canAttempt).toBe(true);
+      expect(access.get(f.paid.id)?.canAttempt).toBe(false);
+      await expect(
+        assertExamAccess(database.manager, f.paid.id, Number(f.viewer.id)),
+      ).rejects.toMatchObject({ status: 403 });
+    });
+
+    it('should not disclose or query another user payment', async () => {
+      const f = await fixture();
+      const order = await pending(f);
+      const other = await users.create(user());
+      await expect(
+        f.payments.status(order.id, Number(other.id)),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(f.provider.get).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid webhook signatures without granting access', async () => {
+      const f = await fixture();
+      await pending(f);
+      f.provider.verify.mockRejectedValue(new BadRequestException());
+      await expect(f.payments.webhook({})).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(f.provider.get).not.toHaveBeenCalled();
+      expect(
+        await database
+          .getRepository(ExamPurchaseEntity)
+          .countBy({ userId: Number(f.viewer.id), examId: f.paid.id }),
+      ).toBe(0);
+    });
+
+    it('should not grant access when the provider amount differs from the order', async () => {
+      const f = await fixture();
+      const order = await pending(f);
+      f.provider.verify.mockResolvedValue({
+        code: '00',
+        currency: 'VND',
+        orderCode: order.orderCode,
+        paymentLinkId: f.paymentLinkId,
+      });
+      f.provider.get.mockResolvedValue({
+        ...paidInfo(order),
+        amount: order.amount + 1,
+      });
+      await expect(f.payments.webhook({})).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(
+        await database
+          .getRepository(ExamPurchaseEntity)
+          .countBy({ userId: Number(f.viewer.id), examId: f.paid.id }),
+      ).toBe(0);
+    });
+
+    it('should grant exactly one purchase when status polling and duplicate webhooks race', async () => {
+      const f = await fixture();
+      const order = await pending(f);
+      f.provider.verify.mockResolvedValue({
+        code: '00',
+        currency: 'VND',
+        orderCode: order.orderCode,
+        paymentLinkId: f.paymentLinkId,
+      });
+      f.provider.get.mockResolvedValue(paidInfo(order));
+      await Promise.all([
+        f.payments.webhook({}),
+        f.payments.webhook({}),
+        f.payments.status(order.id, Number(f.viewer.id)),
+      ]);
+      expect(
+        await database
+          .getRepository(ExamPurchaseEntity)
+          .countBy({ userId: Number(f.viewer.id), examId: f.paid.id }),
+      ).toBe(1);
+      expect(
+        await database.getRepository(ExamPaymentEntity).findOneByOrFail({
+          id: order.id,
+        }),
+      ).toMatchObject({ status: 'paid', paidAt: expect.any(Date) });
+      await expect(
+        assertExamAccess(database.manager, f.paid.id, Number(f.viewer.id)),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should reuse the same persisted order code across concurrent checkout requests', async () => {
+      const f = await fixture();
+      f.provider.get.mockImplementation((orderCode: number) => ({
+        id: f.paymentLinkId,
+        orderCode,
+        amount: 2000,
+        amountPaid: 0,
+        amountRemaining: 2000,
+        status: 'PENDING',
+      }));
+      const results = await Promise.all([
+        f.payments.checkout(f.paid.id, f.viewer),
+        f.payments.checkout(f.paid.id, f.viewer),
+      ]);
+      const orders = await database.getRepository(ExamPaymentEntity).findBy({
+        userId: Number(f.viewer.id),
+        examId: f.paid.id,
+      });
+      expect(orders).toHaveLength(1);
+      for (const result of results) {
+        expect(result).toMatchObject({
+          id: orders[0].id,
+          status: 'pending',
+          accessGranted: false,
+        });
+      }
+      expect(f.provider.create).toHaveBeenCalled();
+      expect(
+        new Set(f.provider.create.mock.calls.map(([input]) => input.orderCode)),
+      ).toEqual(new Set([orders[0].orderCode]));
+    });
   });
 });
