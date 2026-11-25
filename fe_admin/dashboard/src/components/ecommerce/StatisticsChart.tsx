@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import flatpickr from "flatpickr";
+import { Vietnamese } from "flatpickr/dist/l10n/vn";
 import { CalenderIcon } from "../../icons";
 import { apiFetch } from "@/lib/api";
 
@@ -20,11 +21,26 @@ export default function StatisticsChart() {
 
     const fp = flatpickr(datePickerRef.current, {
       mode: "range",
-      static: true,
+      locale: {
+        ...Vietnamese,
+        months: {
+          ...Vietnamese.months,
+          longhand: [
+            "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+            "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
+          ],
+        },
+        rangeSeparator: " - ",
+      },
+      position: "auto right",
       monthSelectorType: "static",
-      dateFormat: "M d",
+      dateFormat: "d/m/Y",
+      ariaDateFormat: "d/m/Y",
       defaultDate: [sevenDaysAgo, today],
       clickOpens: true,
+      onReady: (_dates, _value, instance) => {
+        instance.calendarContainer.classList.add("statistics-calendar");
+      },
       prevArrow:
         '<svg class="stroke-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5 15L7.5 10L12.5 5" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       nextArrow:
@@ -160,9 +176,9 @@ export default function StatisticsChart() {
     }
   ];
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
-      <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
-        <div className="w-full">
+    <div className="min-w-0 rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 basis-64">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
             Thống kê
           </h3>
@@ -170,36 +186,39 @@ export default function StatisticsChart() {
             Số lượng người dùng mới (tháng {apiData.startMonth} - tháng {apiData.startMonth + 5})
           </p>
         </div>
-        <div className="flex items-center gap-3 sm:justify-end">
-          <div className="flex items-center gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900">
+        <div className="flex w-full max-w-full flex-wrap items-center gap-3 sm:w-auto">
+          <div className="inline-flex shrink-0 items-center gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900">
             <button
+              type="button"
+              aria-pressed={selectedRole === "student"}
               onClick={() => setSelectedRole("student")}
-              className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm hover:text-gray-900 dark:hover:text-white ${getButtonClass("student")}`}
+              className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-theme-sm font-medium hover:text-gray-900 dark:hover:text-white ${getButtonClass("student")}`}
             >
               Người dùng
             </button>
             <button
+              type="button"
+              aria-pressed={selectedRole === "teacher"}
               onClick={() => setSelectedRole("teacher")}
-              className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm hover:text-gray-900 dark:hover:text-white ${getButtonClass("teacher")}`}
+              className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-theme-sm font-medium hover:text-gray-900 dark:hover:text-white ${getButtonClass("teacher")}`}
             >
               Giáo viên
             </button>
           </div>
-          <div className="relative inline-flex items-center">
-            <CalenderIcon className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 lg:left-3 lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2  text-gray-500 dark:text-gray-400 pointer-events-none z-10" />
+          <div className="relative w-full sm:w-[17rem] sm:shrink-0">
+            <CalenderIcon className="pointer-events-none absolute left-3 top-1/2 z-10 size-5 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
             <input
               ref={datePickerRef}
-              className="h-10 w-10 lg:w-40 lg:h-auto  lg:pl-10 lg:pr-3 lg:py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-transparent lg:text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-800 dark:lg:text-gray-300 cursor-pointer"
-              placeholder="Select date range"
+              aria-label="Chọn khoảng ngày thống kê"
+              className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-sm font-medium text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              placeholder="Chọn khoảng ngày"
             />
           </div>
         </div>
       </div>
 
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
-        <div className="min-w-[1000px] xl:min-w-full">
-          <Chart options={options} series={series} type="area" height={310} />
-        </div>
+      <div className="w-full min-w-0">
+        <Chart options={options} series={series} type="area" height={310} width="100%" />
       </div>
     </div>
   );

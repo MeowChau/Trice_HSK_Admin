@@ -30,16 +30,20 @@ export default function DistributionChart({ id, title, labels, series, error }: 
     },
     labels,
     colors,
+    grid: { padding: { top: 12, right: 12, bottom: 12, left: 12 } },
+    plotOptions: { pie: { dataLabels: { offset: -8 } } },
     legend: { position: "bottom", fontSize: "12px" },
     dataLabels: {
       enabled: true,
       formatter: (_value, options) => options.w.config.series[options.seriesIndex],
+      style: { colors: ["#FFFFFF"], fontSize: "12px", fontWeight: 700 },
+      dropShadow: { enabled: false },
     },
     tooltip: { y: { formatter: (value) => `${value} người` } },
   };
 
   return (
-    <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+    <div className="distribution-chart min-w-0 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
       <h3 className="mb-4 w-full text-center text-lg font-semibold text-gray-800 dark:text-white/90">
         {title}
       </h3>

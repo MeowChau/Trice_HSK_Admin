@@ -22,17 +22,15 @@ export default function MonthlySalesChart() {
       bar: {
         horizontal: false,
         columnWidth: "39%",
-        borderRadius: 5,
-        borderRadiusApplication: "end",
+        borderRadius: 0,
       },
     },
     dataLabels: {
       enabled: false,
     },
     stroke: {
-      show: true,
-      width: 4,
-      colors: ["transparent"],
+      show: false,
+      width: 0,
     },
     xaxis: {
       categories: [
@@ -63,6 +61,9 @@ export default function MonthlySalesChart() {
       fontFamily: "Outfit",
     },
     yaxis: {
+      min: 0,
+      stepSize: 1,
+      decimalsInFloat: 0,
       title: {
         text: undefined,
       },

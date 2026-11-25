@@ -301,6 +301,15 @@
   @apply !fill-gray-700 dark:!fill-gray-400;
 }
 
+/* Keep pie counts legible on every slice in both themes. */
+.distribution-chart .apexcharts-pie-label {
+  fill: #ffffff !important;
+  stroke: #101828;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
 .apexcharts-tooltip.apexcharts-theme-light {
   @apply gap-1 !rounded-lg !border-gray-200 p-3 !shadow-theme-sm dark:!border-gray-800 dark:!bg-gray-900;
 }
@@ -489,6 +498,22 @@ span.flatpickr-weekday,
 
 .flatpickr-calendar.static {
   @apply right-0;
+}
+
+@media (max-width: 525px) {
+  .statistics-calendar.flatpickr-calendar {
+    left: 1rem !important;
+    right: 1rem !important;
+    width: calc(100vw - 2rem) !important;
+  }
+
+  .statistics-calendar .flatpickr-rContainer,
+  .statistics-calendar .flatpickr-days,
+  .statistics-calendar .dayContainer {
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 .fc .fc-view-harness {
