@@ -131,10 +131,7 @@ export class LeaderboardService {
       .andWhere('user.deletedAt IS NULL');
 
     if (hskLevel && hskLevel >= 1 && hskLevel <= 9) {
-      userQuery.andWhere(
-        '(user.targetHskLevel = :hskLevel OR user.currentHskLevel = :hskLevel)',
-        { hskLevel },
-      );
+      userQuery.andWhere('user.currentHskLevel = :hskLevel', { hskLevel });
     }
 
     const students = await userQuery.getMany();
