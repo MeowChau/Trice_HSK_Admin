@@ -20,7 +20,7 @@ interface Status {
 
 interface UserRow {
   id: string;
-  studentCode: number;
+  studentCode: number | null;
   username?: string;
   currentHskLevel: number;
   status: Status;
@@ -39,24 +39,35 @@ export default function RecentUsers() {
     const request = requests.start();
     const filters: UserFilters = {
       roles: [{ id: 2 }],
+      excludeDeleted: true,
       ...(filterLevel ? { currentHskLevel: Number(filterLevel) } : {}),
     };
     const query = new URLSearchParams({
       page: String(page),
       limit: String(limit),
       filters: JSON.stringify(filters),
+      sort: JSON.stringify([
+        { orderBy: "createdAt", order: "DESC" },
+        { orderBy: "id", order: "DESC" },
+      ]),
     });
     if (sortBy === "name_asc")
       query.set(
         "sort",
-        JSON.stringify([{ orderBy: "firstName", order: "ASC" }]),
+        JSON.stringify([
+          { orderBy: "username", order: "ASC" },
+          { orderBy: "id", order: "ASC" },
+        ]),
       );
     else if (sortBy === "id_asc")
       query.set(
         "sort",
-        JSON.stringify([{ orderBy: "studentCode", order: "ASC" }]),
+        JSON.stringify([
+          { orderBy: "studentCode", order: "ASC" },
+          { orderBy: "id", order: "ASC" },
+        ]),
       );
-    void apiFetch(`users?${query}`, { signal: request.signal })
+    void apiFetch(`users?${query}`, { signal: request.signal, cache: "no-store" })
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json() as Promise<{
@@ -107,7 +118,7 @@ export default function RecentUsers() {
               setPage(1);
             }}
           >
-            <option value="">Sắp xếp (Mặc định)</option>
+            <option value="">Mới nhất</option>
             <option value="name_asc">Tên (A-Z)</option>
             <option value="id_asc">Mã học viên</option>
           </select>
@@ -170,7 +181,7 @@ export default function RecentUsers() {
               return (
                 <TableRow key={user.id}>
                   <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400 font-medium">
-                    {user.studentCode ? `#${user.studentCode}` : ""}
+                    {user.studentCode ? `#${user.studentCode}` : "Chưa cấp mã"}
                   </TableCell>
                   <TableCell className="py-3">
                     <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">

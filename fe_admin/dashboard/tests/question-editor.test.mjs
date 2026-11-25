@@ -5,10 +5,11 @@ import { buildQuestionInput, draftFromQuestion, preparationIssues, QUESTION_TEMP
 test("new forms contain no invented fruit options or default correct answer", () => {
   const draft = draftFromQuestion();
   assert.equal(draft.answer, "");
+  assert.equal(draft.reviewConfirmed, false);
   assert.deepEqual(draft.choices.map(choice => choice.text), ["", "", ""]);
 });
 test("an image containing the printed options only needs its option count and answer", () => {
-  const draft = { ...draftFromQuestion(), imageUrl: "/api/v1/files/worksheet.webp", answer: "B" };
+  const draft = { ...draftFromQuestion(), imageUrl: "/api/v1/files/worksheet.webp", answer: "B", reviewConfirmed: true };
   assert.equal(validateDraft(draft), null);
   const question = buildQuestionInput(draft);
   assert.deepEqual(question.payload.options, ["", "", ""]);

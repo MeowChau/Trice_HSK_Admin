@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { FindOptionsWhere, Repository, In } from 'typeorm';
+import { FindOptionsWhere, Repository, In, Not, IsNull, Raw } from 'typeorm';
+import { RoleEnum } from '../../../../../roles/roles.enum';
 import { UserEntity } from '../entities/user.entity';
 import { NullableType } from '../../../../../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto } from '../../../../dto/query-user.dto';
@@ -38,8 +39,15 @@ export class UsersRelationalRepository implements UserRepository {
     repository: Repository<UserEntity>,
     data: User,
   ): Promise<User> {
-    if (!data.studentCode && Number(data.status?.id) !== StatusEnum.active)
+    // A student code is issued only after approval, including explicit assignments.
+    if (Number(data.status?.id) !== StatusEnum.active) {
+      if (data.studentCode) {
+        throw new ConflictException(
+          'Mã học viên chỉ được cấp khi tài khoản đã được duyệt.',
+        );
+      }
       return data;
+    }
     // All allocations and explicit assignments use the same transaction-scoped lock.
     await repository.query('SELECT pg_advisory_xact_lock($1)', [839141]);
     if (data.studentCode) {
@@ -94,27 +102,62 @@ export class UsersRelationalRepository implements UserRepository {
     }
 
     if (filterOptions?.position) {
-      where.position = filterOptions.position;
+      // Match the effective position exposed by UserMapper, including legacy
+      // teachers whose missing position is displayed as Bậc 1.
+      where.position = Raw(
+        (alias) =>
+          `CASE WHEN "user"."roleId" = :positionTeacherRole
+            THEN COALESCE(NULLIF(BTRIM(${alias}), ''), :defaultTeacherPosition)
+            ELSE NULLIF(BTRIM(${alias}), '') END = :position`,
+        {
+          positionTeacherRole: RoleEnum.teacher,
+          defaultTeacherPosition: UserMapper.normalizeTeacherPosition(null),
+          position: filterOptions.position.trim(),
+        },
+      );
     }
 
-    const entities = await this.usersRepository.find({
-      skip: (paginationOptions.page - 1) * paginationOptions.limit,
-      take: paginationOptions.limit,
-      where: where,
-      order: sortOptions?.reduce((accumulator, sort) => {
-        if (sort.orderBy === 'status' || sort.orderBy === 'role') {
-          return {
-            ...accumulator,
-            [sort.orderBy]: { id: sort.order },
-          };
-        }
-        return {
-          ...accumulator,
-          [sort.orderBy]: sort.order,
-        };
-      }, {}),
-      withDeleted: true,
-    });
+    if (filterOptions?.onlyDeleted) {
+      where.deletedAt = Not(IsNull());
+    }
+
+    const query = this.usersRepository
+      .createQueryBuilder('user')
+      .setFindOptions({
+        skip: (paginationOptions.page - 1) * paginationOptions.limit,
+        take: paginationOptions.limit,
+        where,
+        relations: ['photo', 'role', 'status'],
+        loadEagerRelations: false,
+        withDeleted:
+          filterOptions?.onlyDeleted === true ||
+          filterOptions?.excludeDeleted !== true,
+      });
+
+    // Sort in the database before pagination. Selected aliases also keep the
+    // normalized expressions available to TypeORM's paginated relation query.
+    for (const [index, sort] of (sortOptions ?? []).entries()) {
+      const column = this.usersRepository.metadata.findColumnWithPropertyPath(
+        sort.orderBy,
+      );
+      if (!column) continue;
+      const escapedColumn = `"user"."${column.databaseName}"`;
+      const expression =
+        sort.orderBy === 'fullName'
+          ? `LOWER(COALESCE(NULLIF(BTRIM(user.fullName), ''), NULLIF(BTRIM(user.firstName), '')))`
+          : column.type === String
+            ? `LOWER(NULLIF(BTRIM(${escapedColumn}), ''))`
+            : escapedColumn;
+      const alias = `user_sort_${index}`;
+      query
+        .addSelect(expression, alias)
+        .addOrderBy(alias, sort.order, 'NULLS LAST');
+    }
+    // Equal names and timestamps must not move between pages.
+    if (!sortOptions?.some((sort) => sort.orderBy === 'id')) {
+      query.addOrderBy('user.id', 'DESC');
+    }
+    const entities = await query.getMany();
 
     return entities.map((user) => UserMapper.toDomain(user));
   }

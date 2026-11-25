@@ -3,6 +3,9 @@ import {
   Get,
   Post,
   Body,
+  Query,
+  ParseIntPipe,
+  BadRequestException,
   Request,
   UseGuards,
   HttpCode,
@@ -12,7 +15,10 @@ import { AnalyticsService } from './analytics.service';
 import { PingSessionDto } from './dto/ping-session.dto';
 import { VocabularyProgressDto } from './dto/vocabulary-progress.dto';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
-import { RegistrationsResponseDto } from './dto/registrations-response.dto';
+import {
+  RegistrationsQueryDto,
+  RegistrationsResponseDto,
+} from './dto/registrations-response.dto';
 import { HskDistributionResponseDto } from './dto/hsk-distribution-response.dto';
 import {
   ApiBearerAuth,
@@ -20,6 +26,7 @@ import {
   ApiOperation,
   ApiOkResponse,
   ApiCreatedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ActiveGuard } from '../auth/guards/active.guard';
@@ -52,7 +59,7 @@ export class AnalyticsController {
 
   @ApiOperation({
     summary:
-      'Get user registration statistics (students and teachers) for the current 6-month period',
+      'Thống kê đăng ký theo khoảng ngày (giờ Việt Nam); mặc định 6 tháng hiện tại nếu không lọc.',
   })
   @ApiOkResponse({
     type: RegistrationsResponseDto,
@@ -61,8 +68,46 @@ export class AnalyticsController {
   @ContentEditor()
   @Get('registrations')
   @HttpCode(HttpStatus.OK)
-  getRegistrations() {
-    return this.analyticsService.getRegistrations();
+  getRegistrations(@Query() query: RegistrationsQueryDto = {}) {
+    return this.analyticsService.getRegistrations(query);
+  }
+
+  @ApiOperation({
+    summary: 'Số đề thi được tạo theo tháng trong năm, giờ Việt Nam',
+  })
+  @ApiQuery({ name: 'year', required: false, type: Number, example: 2026 })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      required: ['year', 'monthlyCounts', 'total'],
+      properties: {
+        year: { type: 'integer', example: 2026 },
+        monthlyCounts: {
+          type: 'array',
+          minItems: 12,
+          maxItems: 12,
+          items: { type: 'integer', minimum: 0 },
+          description: 'Thứ tự từ tháng 1 đến tháng 12; không tính đề đã xóa.',
+        },
+        total: { type: 'integer', minimum: 0 },
+      },
+    },
+  })
+  @ContentEditor()
+  @Get('monthly-exams')
+  @HttpCode(HttpStatus.OK)
+  getMonthlyExams(
+    @Query(
+      'year',
+      new ParseIntPipe({
+        optional: true,
+        exceptionFactory: () =>
+          new BadRequestException('Năm phải là số nguyên từ 1900 đến 2100.'),
+      }),
+    )
+    year?: number,
+  ) {
+    return this.analyticsService.getMonthlyExams(year);
   }
 
   @ApiOperation({ summary: 'Get current and target HSK level distribution' })

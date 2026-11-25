@@ -58,8 +58,36 @@ export function draftFromQuestion(question?: QuestionRecord): QuestionDraft {
     start: stamp?.start === undefined ? "" : String(stamp.start), end: stamp?.end === undefined ? "" : String(stamp.end),
     choices: Array.from({ length: options.length || template.choices || 0 }, (_, i) => ({ text: stringValue(options[i]) || (template.type === "TRUE_FALSE" ? (i === 0 ? "Đúng" : "Sai") : ""), imageUrl: stringValue(images[i]) })),
     answer: stringValue(question?.correctAnswer?.answer ?? question?.correctAnswer?.rubric),
-    explanation: stringValue(question?.correctAnswer?.explanation), reviewConfirmed: payload.reviewRequired !== true,
+    explanation: stringValue(question?.correctAnswer?.explanation), reviewConfirmed: payload.reviewRequired === false,
   };
+}
+export function questionContentErrors(draft: QuestionDraft): { choices?: string; answer?: string } {
+  const template = templateFor(draft.templateId);
+  const errors: { choices?: string; answer?: string } = {};
+  if (template.choices) {
+    const seen = new Map<string, number>();
+    for (const [index, choice] of draft.choices.entries()) {
+      const text = choice.text.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
+      const image = choice.imageUrl.trim();
+      // Empty labels can refer to distinct options printed in the shared image.
+      if (!text && !image) continue;
+      const key = JSON.stringify([text, image]);
+      const previous = seen.get(key);
+      if (previous !== undefined) {
+        errors.choices = `Phương án ${String.fromCharCode(65 + previous)} và ${String.fromCharCode(65 + index)} trùng nội dung. Hãy nhập các phương án khác nhau.`;
+        break;
+      }
+      seen.set(key, index);
+    }
+  }
+  if (draft.reviewConfirmed && !draft.answer.trim()) {
+    errors.answer = template.manual
+      ? "Cần nhập hướng dẫn chấm trước khi xác nhận đã đối chiếu."
+      : template.choices
+        ? "Cần chọn đáp án đúng trước khi xác nhận đã đối chiếu."
+        : "Cần nhập đáp án mẫu trước khi xác nhận đã đối chiếu.";
+  }
+  return errors;
 }
 export function validateDraft(draft: QuestionDraft, duration?: number): string | null {
   const template = templateFor(draft.templateId);
@@ -71,6 +99,9 @@ export function validateDraft(draft: QuestionDraft, duration?: number): string |
       return "Mỗi phương án cần chữ hoặc ảnh. Nếu dùng ảnh đề chứa sẵn các phương án, hãy tải ảnh đề lên.";
     if (draft.answer && !draft.choices.some((_, index) => String.fromCharCode(65+index) === draft.answer)) return "Đáp án phải thuộc danh sách phương án.";
   }
+  const contentErrors = questionContentErrors(draft);
+  if (contentErrors.choices) return contentErrors.choices;
+  if (contentErrors.answer) return contentErrors.answer;
   if (draft.start || draft.end) {
     if (!draft.audioUrl.trim()) return "Hãy tải audio lên trước khi chọn đoạn nghe.";
     const start = draft.start ? Number(draft.start) : 0;

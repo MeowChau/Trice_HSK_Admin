@@ -25,7 +25,7 @@ interface Status {
 interface UserRow {
   id: string;
 
-  studentCode: number;
+  studentCode: number | null;
 
   username?: string;
 
@@ -84,7 +84,7 @@ export default function PendingPendingStudentList() {
       let sortParams =
         '[{"orderBy":"status","order":"ASC"},{"orderBy":"studentCode","order":"ASC"}]';
       if (sortBy === "name_asc") {
-        sortParams = '[{"orderBy":"firstName","order":"ASC"}]';
+        sortParams = '[{"orderBy":"username","order":"ASC"},{"orderBy":"id","order":"ASC"}]';
       } else if (sortBy === "id_asc") {
         sortParams = '[{"orderBy":"studentCode","order":"ASC"}]';
       }
@@ -240,7 +240,7 @@ export default function PendingPendingStudentList() {
                 return (
                   <TableRow key={user.id}>
                     <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400 font-medium">
-                      {user.studentCode ? `#${user.studentCode}` : ""}
+                      {user.studentCode ? `#${user.studentCode}` : "Chưa cấp mã"}
                     </TableCell>
 
                     <TableCell className="py-3">

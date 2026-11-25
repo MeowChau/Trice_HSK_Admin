@@ -82,6 +82,42 @@ describe('UsersRelationalRepository student codes', () => {
     expect(transactional.query).not.toHaveBeenCalled();
   });
 
+  it('should not issue a student code when a pending account is rejected', async () => {
+    transactional.findOne.mockResolvedValue({
+      id: 7,
+      username: 'student',
+      email: 'student@example.com',
+      role: { id: 2 },
+      status: { id: 3 },
+      studentCode: null,
+    });
+    const saved = await repository.update(7, { status: { id: 2 } });
+    expect(saved.studentCode).toBeNull();
+    expect(saved.status?.id).toBe(2);
+    expect(transactional.query).not.toHaveBeenCalled();
+  });
+
+  it('should reject an explicit code for an unapproved account', async () => {
+    await expect(
+      repository.create(data({ status: { id: 3 }, studentCode: 20 })),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(transactional.save).not.toHaveBeenCalled();
+  });
+
+  it('should preserve an issued code when an approved account is later disabled', async () => {
+    transactional.findOne.mockResolvedValue({
+      id: 7,
+      username: 'student',
+      email: 'student@example.com',
+      role: { id: 2 },
+      status: { id: 1 },
+      studentCode: 10,
+    });
+    const saved = await repository.update(7, { status: { id: 2 } });
+    expect(saved.studentCode).toBe(10);
+    expect(transactional.query).not.toHaveBeenCalled();
+  });
+
   it('should reject explicit duplicate codes before saving', async () => {
     transactional.findOne.mockResolvedValue({ id: 8, studentCode: 20 });
     await expect(

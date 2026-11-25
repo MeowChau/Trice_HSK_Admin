@@ -1,72 +1,160 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import flatpickr from "flatpickr";
+import { Vietnamese } from "flatpickr/dist/l10n/vn";
 import { CalenderIcon } from "../../icons";
 import { apiFetch } from "@/lib/api";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import Alert from "@/components/ui/alert/Alert";
+import Button from "@/components/ui/button/Button";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
+type RegistrationRange = { from: string; to: string };
+type RegistrationData = {
+  startMonth: number;
+  endMonth: number;
+  from?: string;
+  to?: string;
+  dates?: string[];
+  newUsers: number[];
+  newTeachers: number[];
+};
+
+const displayDate = (date: string) => date.split("-").reverse().join("/");
+
 export default function StatisticsChart() {
-  const datePickerRef = useRef<HTMLInputElement>(null);
+  const picker = useRef<flatpickr.Instance | null>(null);
+  const pickerDates = useRef<Date[]>([]);
+  const [range, setRange] = useState<RegistrationRange | null>(null);
+  const [apiData, setApiData] = useState<RegistrationData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [dateError, setDateError] = useState("");
+  const requests = useLatestRequest();
 
-  useEffect(() => {
-    if (!datePickerRef.current) return;
+  const attachDatePicker = useCallback((input: HTMLInputElement | null) => {
+    const previous = picker.current;
+    picker.current = null;
+    previous?.destroy();
+    if (!input) return;
 
-    const today = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 6);
-
-    const fp = flatpickr(datePickerRef.current, {
+    // Keep the React-owned input in place. Flatpickr's static wrapper moves it
+    // to another parent, which makes remounts and hot updates fragile.
+    picker.current = flatpickr(input, {
       mode: "range",
-      static: true,
+      position: "auto",
+      disableMobile: true,
       monthSelectorType: "static",
-      dateFormat: "M d",
-      defaultDate: [sevenDaysAgo, today],
+      locale: { ...Vietnamese, rangeSeparator: "–" },
+      dateFormat: "d/m",
+      defaultDate: pickerDates.current,
       clickOpens: true,
+      onChange: (dates, _dateString, instance) => {
+        pickerDates.current = dates.map((date) => new Date(date.getTime()));
+        if (dates.length === 0) {
+          setDateError("");
+          setRange(null);
+          return;
+        }
+        if (dates.length !== 2) {
+          setDateError("Chọn thêm ngày kết thúc để cập nhật biểu đồ.");
+          return;
+        }
+        const from = instance.formatDate(dates[0], "Y-m-d");
+        const to = instance.formatDate(dates[1], "Y-m-d");
+        if ((Date.parse(to) - Date.parse(from)) / 86400000 + 1 > 366) {
+          setDateError(
+            "Mỗi lần xem tối đa 366 ngày. Vui lòng thu hẹp khoảng thời gian.",
+          );
+          return;
+        }
+        setDateError("");
+        setRange((current) =>
+          current?.from === from && current?.to === to ? current : { from, to },
+        );
+      },
       prevArrow:
         '<svg class="stroke-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5 15L7.5 10L12.5 5" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       nextArrow:
         '<svg class="stroke-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 15L12.5 10L7.5 5" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     });
-
-    return () => {
-      if (!Array.isArray(fp)) {
-        fp.destroy();
-      }
-    };
   }, []);
 
-  const [apiData, setApiData] = useState<{ newUsers: number[], newTeachers: number[], startMonth: number }>({
-    newUsers: [0, 0, 0, 0, 0, 0],
-    newTeachers: [0, 0, 0, 0, 0, 0],
-    startMonth: (new Date().getMonth() + 1) <= 6 ? 1 : 7,
-  });
+  const openDatePicker = (input: HTMLInputElement) => {
+    if (!picker.current?.config || picker.current.input !== input) {
+      attachDatePicker(input);
+    }
+    picker.current?.open();
+  };
 
-  const [selectedRole, setSelectedRole] = useState<"student" | "teacher">("student");
+  const [selectedRole, setSelectedRole] = useState<"student" | "teacher">(
+    "student",
+  );
 
   const getButtonClass = (role: "student" | "teacher") =>
     selectedRole === role
       ? "shadow-theme-xs text-gray-900 dark:text-white bg-white dark:bg-gray-800"
       : "text-gray-500 dark:text-gray-400";
 
-  useEffect(() => {
-    const fetchRegistrations = async () => {
-      try {
-        const res = await apiFetch('analytics/registrations');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.newUsers && data.newTeachers && data.startMonth) {
-            setApiData(data);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch registrations", err);
+  const load = useCallback(async () => {
+    const request = requests.start();
+    setLoading(true);
+    setError("");
+    setApiData(null);
+    try {
+      const query = range ? `?${new URLSearchParams(range)}` : "";
+      const response = await apiFetch(`analytics/registrations${query}`, {
+        signal: request.signal,
+        cache: "no-store",
+      });
+      if (!response.ok)
+        throw new Error("Không tải được thống kê. Vui lòng thử lại.");
+      const data: RegistrationData = await response.json();
+      const validSeries =
+        Array.isArray(data.newUsers) && Array.isArray(data.newTeachers);
+      const validPeriod = range
+        ? data.from === range.from &&
+          data.to === range.to &&
+          Array.isArray(data.dates) &&
+          data.dates.length === data.newUsers?.length &&
+          data.dates.length === data.newTeachers?.length
+        : [1, 7].includes(data.startMonth) &&
+          data.endMonth === data.startMonth + 5 &&
+          data.newUsers?.length === 6 &&
+          data.newTeachers?.length === 6;
+      if (!validSeries || !validPeriod) {
+        throw new Error("Dữ liệu thống kê không khớp khoảng ngày đã chọn.");
       }
-    };
-    fetchRegistrations();
-  }, []);
+      if (request.isCurrent()) setApiData(data);
+    } catch {
+      if (request.isCurrent())
+        setError("Không tải được thống kê. Vui lòng thử lại.");
+    } finally {
+      if (request.isCurrent()) setLoading(false);
+    }
+  }, [range, requests]);
+
+  useEffect(() => {
+    void load();
+    return () => requests.cancel();
+  }, [load, requests]);
+
+  const categories = apiData
+    ? range
+      ? (apiData.dates?.map(displayDate) ?? [])
+      : Array.from(
+          { length: 6 },
+          (_, index) => `Th ${apiData.startMonth + index}`,
+        )
+    : [];
+  const periodLabel = range
+    ? `${displayDate(range.from)} – ${displayDate(range.to)}`
+    : apiData
+      ? `tháng ${apiData.startMonth} – tháng ${apiData.endMonth}`
+      : "6 tháng hiện tại";
 
   const options: ApexOptions = {
     legend: {
@@ -121,12 +209,14 @@ export default function StatisticsChart() {
     tooltip: {
       enabled: true, // Enable tooltip
       x: {
-        format: "dd MMM yyyy", // Format for x-axis tooltip
+        formatter: (value) => String(value),
       },
     },
     xaxis: {
       type: "category", // Category-based x-axis
-      categories: Array.from({ length: 6 }, (_, i) => `Th ${apiData.startMonth + i}`),
+      categories,
+      tickAmount: Math.min(Math.max(categories.length - 1, 1), 8),
+      labels: { hideOverlappingLabels: true },
       axisBorder: {
         show: false, // Hide x-axis border
       },
@@ -138,6 +228,8 @@ export default function StatisticsChart() {
       },
     },
     yaxis: {
+      min: 0,
+      decimalsInFloat: 0,
       labels: {
         style: {
           fontSize: "12px", // Adjust font size for y-axis labels
@@ -156,50 +248,144 @@ export default function StatisticsChart() {
   const series = [
     {
       name: selectedRole === "student" ? "Người dùng mới" : "Giáo viên mới",
-      data: selectedRole === "student" ? apiData.newUsers : apiData.newTeachers,
-    }
+      data:
+        (selectedRole === "student"
+          ? apiData?.newUsers
+          : apiData?.newTeachers) ?? [],
+    },
   ];
   return (
     <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
       <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
-        <div className="w-full">
+        <div className="w-full min-w-0">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
             Thống kê
           </h3>
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Số lượng người dùng mới (tháng {apiData.startMonth} - tháng {apiData.startMonth + 5})
+            Số lượng {selectedRole === "student" ? "người dùng" : "giáo viên"}{" "}
+            mới ({periodLabel})
           </p>
         </div>
         <div className="flex items-center gap-3 sm:justify-end">
           <div className="flex items-center gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900">
             <button
+              type="button"
+              aria-pressed={selectedRole === "student"}
               onClick={() => setSelectedRole("student")}
               className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm hover:text-gray-900 dark:hover:text-white ${getButtonClass("student")}`}
             >
               Người dùng
             </button>
             <button
+              type="button"
+              aria-pressed={selectedRole === "teacher"}
               onClick={() => setSelectedRole("teacher")}
               className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm hover:text-gray-900 dark:hover:text-white ${getButtonClass("teacher")}`}
             >
               Giáo viên
             </button>
           </div>
-          <div className="relative inline-flex items-center">
-            <CalenderIcon className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 lg:left-3 lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2  text-gray-500 dark:text-gray-400 pointer-events-none z-10" />
-            <input
-              ref={datePickerRef}
-              className="h-10 w-10 lg:w-40 lg:h-auto  lg:pl-10 lg:pr-3 lg:py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-transparent lg:text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-800 dark:lg:text-gray-300 cursor-pointer"
-              placeholder="Select date range"
+          <div
+            className={`inline-flex h-10 shrink-0 items-center rounded-lg border border-gray-200 bg-white px-1.5 focus-within:border-brand-500 dark:border-gray-700 dark:bg-gray-800 lg:w-40 lg:gap-1 lg:px-3 ${range || dateError ? "w-20" : "w-10"}`}
+            onClick={() => picker.current?.open()}
+          >
+            <CalenderIcon
+              className="pointer-events-none block size-6 shrink-0 fill-current text-gray-500 dark:text-gray-400 [&_path]:fill-current"
+              aria-hidden="true"
             />
+            <input
+              ref={attachDatePicker}
+              readOnly
+              aria-haspopup="dialog"
+              onClick={(event) => openDatePicker(event.currentTarget)}
+              onFocus={(event) => openDatePicker(event.currentTarget)}
+              aria-label="Khoảng ngày thống kê đăng ký"
+              aria-describedby={
+                dateError ? "registration-date-error" : undefined
+              }
+              aria-invalid={!!dateError}
+              title={
+                range
+                  ? `${displayDate(range.from)} – ${displayDate(range.to)}`
+                  : "Chọn khoảng ngày"
+              }
+              className="h-full w-0 min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-sm font-medium leading-5 text-transparent outline-none ring-0 focus:ring-0 lg:text-gray-700 dark:lg:text-gray-300"
+              placeholder="Chọn ngày"
+            />
+            {(range || dateError) && (
+              <button
+                type="button"
+                aria-label="Xóa khoảng ngày đã chọn"
+                title="Xóa khoảng ngày đã chọn"
+                className="inline-flex h-full w-5 shrink-0 items-center justify-center rounded-md border-0 p-0 leading-none text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  picker.current?.clear();
+                  picker.current?.close();
+                  setRange(null);
+                  setDateError("");
+                }}
+              >
+                <span
+                  className="relative block size-3 before:absolute before:inset-0 before:m-auto before:h-px before:w-3 before:rotate-45 before:bg-current before:content-[''] after:absolute after:inset-0 after:m-auto after:h-px after:w-3 after:-rotate-45 after:bg-current after:content-['']"
+                  aria-hidden="true"
+                />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
-        <div className="min-w-[1000px] xl:min-w-full">
-          <Chart options={options} series={series} type="area" height={310} />
-        </div>
+      {dateError && (
+        <p
+          id="registration-date-error"
+          role="alert"
+          className="mb-3 text-sm text-error-500"
+        >
+          {dateError}
+        </p>
+      )}
+      <div
+        aria-busy={loading}
+        aria-label={
+          range ? "Biểu đồ đăng ký theo ngày" : "Biểu đồ đăng ký theo tháng"
+        }
+      >
+        {loading ? (
+          <p
+            role="status"
+            className="flex h-[310px] items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+          >
+            Đang tải biểu đồ…
+          </p>
+        ) : error ? (
+          <div className="min-h-[310px]">
+            <Alert
+              variant="error"
+              title="Chưa tải được thống kê"
+              message={error}
+            />
+            <div className="mt-3">
+              <Button size="sm" variant="outline" onClick={() => void load()}>
+                Thử lại
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Chart options={options} series={series} type="area" height={310} />
+            {!series[0].data.some((count) => count > 0) && (
+              <p
+                role="status"
+                className="mt-2 text-sm text-gray-500 dark:text-gray-400"
+              >
+                Không có{" "}
+                {selectedRole === "student" ? "người dùng" : "giáo viên"} đăng
+                ký mới trong {range ? "khoảng ngày đã chọn" : "6 tháng này"}.
+              </p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

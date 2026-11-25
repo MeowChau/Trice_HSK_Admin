@@ -5,8 +5,13 @@ import { RoleEntity } from '../../../../../roles/infrastructure/persistence/rela
 import { StatusEntity } from '../../../../../statuses/infrastructure/persistence/relational/entities/status.entity';
 import { User } from '../../../../domain/user';
 import { UserEntity } from '../entities/user.entity';
+import { RoleEnum } from '../../../../../roles/roles.enum';
 
 export class UserMapper {
+  static normalizeTeacherPosition(position?: string | null): string {
+    return position?.trim() || 'Bậc 1';
+  }
+
   static toDomain(raw: UserEntity): User {
     const domainEntity = new User();
     domainEntity.emailVerifiedAt = raw.emailVerifiedAt;
@@ -18,7 +23,10 @@ export class UserMapper {
     domainEntity.socialId = raw.socialId;
     domainEntity.username = raw.username;
     domainEntity.fullName = raw.fullName;
-    domainEntity.position = raw.position;
+    domainEntity.position =
+      Number(raw.role?.id) === RoleEnum.teacher
+        ? this.normalizeTeacherPosition(raw.position)
+        : raw.position;
     domainEntity.firstName = raw.firstName;
     domainEntity.lastName = raw.lastName;
     domainEntity.level = raw.level;
@@ -76,7 +84,10 @@ export class UserMapper {
     persistenceEntity.socialId = domainEntity.socialId;
     persistenceEntity.username = domainEntity.username;
     persistenceEntity.fullName = domainEntity.fullName ?? null;
-    persistenceEntity.position = domainEntity.position ?? null;
+    persistenceEntity.position =
+      Number(domainEntity.role?.id) === RoleEnum.teacher
+        ? this.normalizeTeacherPosition(domainEntity.position)
+        : (domainEntity.position ?? null);
     persistenceEntity.firstName = domainEntity.firstName ?? null;
     persistenceEntity.lastName = domainEntity.lastName ?? null;
     if (domainEntity.level !== undefined)

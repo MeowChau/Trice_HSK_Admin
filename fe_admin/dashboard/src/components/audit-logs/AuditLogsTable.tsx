@@ -33,6 +33,7 @@ interface AuditLogItem {
   action: string;
   entityType: string;
   entityId: string;
+  studentCode?: number | null;
   summary: string;
   oldData: Record<string, unknown> | null;
   newData: Record<string, unknown> | null;
@@ -236,7 +237,11 @@ export default function AuditLogsTable() {
     }
   };
 
-  const getEntityBadge = (entityType: string, entityId: string) => {
+  const getEntityBadge = (
+    entityType: string,
+    entityId: string,
+    studentCode?: number | null,
+  ) => {
     switch (entityType) {
       case "TEACHER":
         return (
@@ -246,8 +251,14 @@ export default function AuditLogsTable() {
         );
       case "STUDENT":
         return (
-          <span className="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700 dark:bg-teal-950/30 dark:text-teal-400">
-            🎓 Học viên #{entityId}
+          <span
+            title={`ID tài khoản: ${entityId}`}
+            className="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700 dark:bg-teal-950/30 dark:text-teal-400"
+          >
+            🎓{" "}
+            {studentCode
+              ? `Học viên #${studentCode}`
+              : "Học viên · Chưa cấp mã"}
           </span>
         );
       case "QUESTION":
@@ -576,7 +587,11 @@ export default function AuditLogsTable() {
 
                     {/* Đối tượng */}
                     <TableCell className="min-w-[150px] px-4 py-3.5 text-center">
-                      {getEntityBadge(log.entityType, log.entityId)}
+                      {getEntityBadge(
+                        log.entityType,
+                        log.entityId,
+                        log.studentCode,
+                      )}
                     </TableCell>
 
                     {/* Nội dung tóm tắt */}
@@ -697,7 +712,11 @@ export default function AuditLogsTable() {
                 </span>
                 <div className="flex items-center gap-2 mt-1">
                   {getActionBadge(selectedLog.action)}
-                  {getEntityBadge(selectedLog.entityType, selectedLog.entityId)}
+                  {getEntityBadge(
+                    selectedLog.entityType,
+                    selectedLog.entityId,
+                    selectedLog.studentCode,
+                  )}
                 </div>
               </div>
 

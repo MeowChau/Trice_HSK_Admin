@@ -45,6 +45,10 @@ interface TeacherRow {
   email?: string | null;
 }
 
+type CreateTeacherErrors = Partial<
+  Record<"email" | "fullName" | "password", string>
+>;
+
 export default function TeacherList() {
   const requests = useLatestRequest();
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
@@ -110,6 +114,7 @@ export default function TeacherList() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createErrors, setCreateErrors] = useState<CreateTeacherErrors>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit Teacher Modal State
@@ -139,10 +144,11 @@ export default function TeacherList() {
         roles: [{ id: 3 }], // Giáo viên có role ID = 3
       };
 
-      if (filterStatus) {
+      if (filterStatus === "deleted") {
+        filtersObj.onlyDeleted = true;
+      } else if (filterStatus) {
         filtersObj.statuses = [{ id: parseInt(filterStatus) }];
-      } else {
-        filtersObj.statuses = [{ id: 1 }, { id: 2 }]; // Mặc định hiển thị Hoạt động và Đã hủy
+        filtersObj.excludeDeleted = true;
       }
 
       if (filterPosition) {
@@ -204,6 +210,7 @@ export default function TeacherList() {
 
   // Reset modal form
   const resetForm = () => {
+    setCreateErrors({});
     setNewEmail("");
     setNewFullName("");
     setNewPosition("Bậc 1");
@@ -219,22 +226,27 @@ export default function TeacherList() {
     e?: React.FormEvent | React.MouseEvent,
   ) => {
     if (e) e.preventDefault();
+    if (isSubmitting) return;
 
+    const errors: CreateTeacherErrors = {};
     if (!newEmail.trim()) {
-      showAlert("Vui lòng nhập email giảng viên", "warning");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail.trim())) {
-      showAlert("Định dạng email không hợp lệ", "warning");
-      return;
+      errors.email = "Vui lòng nhập email giảng viên.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+      errors.email = "Email không đúng định dạng.";
     }
 
     if (!newFullName.trim()) {
-      showAlert("Vui lòng nhập họ và tên giảng viên", "warning");
-      return;
+      errors.fullName = "Tên giảng viên không được để trống.";
+    } else if (newFullName.trim().length > 255) {
+      errors.fullName = "Tên giảng viên không được quá 255 ký tự.";
     }
+    if (newPassword.trim() && newPassword.trim().length < 6) {
+      errors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+    } else if (newPassword.trim().length > 72) {
+      errors.password = "Mật khẩu không được quá 72 ký tự.";
+    }
+    setCreateErrors(errors);
+    if (Object.keys(errors).length) return;
 
     setIsSubmitting(true);
     try {
@@ -409,6 +421,9 @@ export default function TeacherList() {
     }
     if (teacher.status?.id === 2) {
       return { text: "Đã hủy", color: "error" as const };
+    }
+    if (teacher.status?.id === 3) {
+      return { text: "Chờ duyệt", color: "warning" as const };
     }
     return { text: "Không rõ", color: "info" as const };
   };
@@ -625,7 +640,9 @@ export default function TeacherList() {
             >
               <option value="">Tất cả trạng thái</option>
               <option value="1">Đang hoạt động</option>
+              <option value="3">Chờ duyệt</option>
               <option value="2">Đã hủy</option>
+              <option value="deleted">Đã xóa</option>
             </select>
           </div>
         </div>
@@ -745,18 +762,23 @@ export default function TeacherList() {
                     {/* 5. Thao tác: CHỈ GỒM HỦY VÀ CẤP MẬT KHẨU TẠM THỜI */}
                     <TableCell className="w-28 min-w-[110px] px-4 py-3 text-center relative">
                       <button
+                        disabled={Boolean(teacher.deletedAt)}
                         onClick={() =>
                           setOpenDropdownId(
                             openDropdownId === teacher.id ? null : teacher.id,
                           )
                         }
-                        className="p-1 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
-                        title="Thao tác"
+                        className="p-1 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                        title={
+                          teacher.deletedAt
+                            ? "Tài khoản đã xóa không thể thao tác"
+                            : "Thao tác"
+                        }
                       >
                         <MoreDotIcon className="w-5 h-5" />
                       </button>
 
-                      {openDropdownId === teacher.id && (
+                      {!teacher.deletedAt && openDropdownId === teacher.id && (
                         <div className="absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 rounded-full px-2 py-1 z-20 transition-all duration-200">
                           {/* Thao tác 1: HỦY (hoặc Kích hoạt lại nếu đã hủy) */}
                           {isCanceled ? (
@@ -1050,27 +1072,45 @@ export default function TeacherList() {
 
           {/* 2. Email giảng viên (thay thế tên đăng nhập) */}
           <div>
-            <Label>
+            <Label htmlFor="create-teacher-email">
               Email giảng viên <span className="text-error-500">*</span>
             </Label>
             <Input
+              id="create-teacher-email"
               type="email"
               placeholder="Ví dụ: giangvien@gmail.com"
               value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
+              onChange={(e) => {
+                setNewEmail(e.target.value);
+                setCreateErrors((previous) => ({
+                  ...previous,
+                  email: undefined,
+                }));
+              }}
+              error={Boolean(createErrors.email)}
+              hint={createErrors.email}
             />
           </div>
 
           {/* 3. Tên giảng viên */}
           <div>
-            <Label>
+            <Label htmlFor="create-teacher-name">
               Tên giảng viên <span className="text-error-500">*</span>
             </Label>
             <Input
+              id="create-teacher-name"
               type="text"
               placeholder="Ví dụ: Nguyễn Văn An"
               value={newFullName}
-              onChange={(e) => setNewFullName(e.target.value)}
+              onChange={(e) => {
+                setNewFullName(e.target.value);
+                setCreateErrors((previous) => ({
+                  ...previous,
+                  fullName: undefined,
+                }));
+              }}
+              error={Boolean(createErrors.fullName)}
+              hint={createErrors.fullName}
             />
           </div>
 
@@ -1091,17 +1131,26 @@ export default function TeacherList() {
 
           {/* 5. Mật khẩu ban đầu có con mắt toggle */}
           <div>
-            <Label>Mật khẩu ban đầu</Label>
+            <Label htmlFor="create-teacher-password">Mật khẩu ban đầu</Label>
             <div className="relative">
               <Input
+                id="create-teacher-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Mặc định: 123456"
+                placeholder="Nhập mật khẩu ban đầu"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setCreateErrors((previous) => ({
+                    ...previous,
+                    password: undefined,
+                  }));
+                }}
+                error={Boolean(createErrors.password)}
+                hint={createErrors.password}
               />
               <span
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-[22px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               >
                 {showPassword ? (
@@ -1111,9 +1160,6 @@ export default function TeacherList() {
                 )}
               </span>
             </div>
-            <span className="text-xs text-gray-500 mt-1 block">
-              Nếu để trống, mật khẩu mặc định là 123456
-            </span>
           </div>
 
           <div className="mt-4 flex justify-end gap-3">

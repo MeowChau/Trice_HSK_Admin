@@ -25,7 +25,85 @@ import {
 
 import Badge from "../ui/badge/Badge";
 import Alert from "../ui/alert/Alert";
-import { apiFetch, readApiError } from "@/lib/api";
+import { apiFetch, getToken, readApiError } from "@/lib/api";
+
+type CreateUserField = "username" | "email" | "password";
+type CreateUserErrors = Partial<Record<CreateUserField, string>>;
+
+function validateCreateUserField(field: CreateUserField, value: string) {
+  if (!value.trim()) {
+    return {
+      username: "Tên không được để trống.",
+      email: "Vui lòng nhập email.",
+      password: "Vui lòng nhập mật khẩu.",
+    }[field];
+  }
+  if (field === "username" && Array.from(value.trim()).length > 255) {
+    return "Tên người dùng không được vượt quá 255 ký tự.";
+  }
+  if (field === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+    return "Vui lòng nhập địa chỉ email hợp lệ.";
+  }
+  if (field === "password") {
+    const length = Array.from(value).length;
+    if (length < 6) {
+      return "Mật khẩu phải có ít nhất 6 ký tự.";
+    }
+    if (length > 72) {
+      return "Mật khẩu không được vượt quá 72 ký tự.";
+    }
+  }
+}
+
+function getCreateUserErrors(payload: unknown): CreateUserErrors {
+  if (!payload || typeof payload !== "object") return {};
+  const data = payload as Record<string, unknown>;
+  const details =
+    data.errors && typeof data.errors === "object"
+      ? (data.errors as Record<string, unknown>)
+      : {};
+  const messages = Array.isArray(data.message)
+    ? data.message.filter(
+        (message): message is string => typeof message === "string",
+      )
+    : [];
+  const errors: CreateUserErrors = {};
+
+  for (const field of ["username", "email", "password"] as const) {
+    const detail = details[field];
+    const message =
+      typeof detail === "string"
+        ? detail
+        : messages
+            .filter((message) => message.startsWith(`${field} `))
+            .join(", ");
+    if (!message) continue;
+
+    if (field === "email") {
+      errors.email = /emailAlreadyExists|already exists|already in use/i.test(
+        message,
+      )
+        ? "Email này đã tồn tại. Vui lòng dùng email khác."
+        : "Vui lòng nhập địa chỉ email hợp lệ.";
+    } else if (field === "password") {
+      errors.password = /minLength|longer than or equal to 6|at least 6/i.test(
+        message,
+      )
+        ? "Mật khẩu phải có ít nhất 6 ký tự."
+        : /maxLength|shorter than or equal to 72|at most 72/i.test(message)
+          ? "Mật khẩu không được vượt quá 72 ký tự."
+          : "Mật khẩu phải có từ 6 đến 72 ký tự.";
+    } else {
+      errors.username =
+        /usernameAlreadyExists|already exists|already in use/i.test(message)
+          ? "Tên người dùng này đã tồn tại. Vui lòng chọn tên khác."
+          : /isNotEmpty|should not be empty|longer than or equal to 1/i.test(message)
+            ? "Tên không được để trống."
+            : "Tên người dùng phải có từ 1 đến 255 ký tự.";
+    }
+  }
+  return errors;
+}
 
 interface Status {
   id: number;
@@ -36,7 +114,7 @@ interface Status {
 interface UserRow {
   id: string;
 
-  studentCode: number;
+  studentCode: number | null;
 
   username?: string;
 
@@ -68,7 +146,7 @@ export default function StudentList() {
     variant: "success" | "error" | "warning" | "info" = "success",
   ) => {
     setAlertMsg({ isOpen: true, message, variant });
-    setTimeout(() => setAlertMsg((prev) => ({ ...prev, isOpen: false })), 3000);
+    setTimeout(() => setAlertMsg((prev) => ({ ...prev, isOpen: false })), 5000);
   };
 
   const showConfirm = (message: string, onConfirm: () => void) => {
@@ -96,29 +174,61 @@ export default function StudentList() {
   const [newPassword, setNewPassword] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createErrors, setCreateErrors] = useState<CreateUserErrors>({});
+  const [createError, setCreateError] = useState("");
 
-  const handleCreateUser = async (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) e.preventDefault();
+  const closeCreateModal = () => {
+    if (isSubmitting) return;
+    setIsModalOpen(false);
+    setCreateErrors({});
+    setCreateError("");
+  };
 
-    if (!newUsername || !newEmail || !newPassword) {
-      showAlert("Vui lòng điền đầy đủ thông tin", "warning");
+  const updateCreateField = (field: CreateUserField, value: string) => {
+    const setters = {
+      username: setNewUsername,
+      email: setNewEmail,
+      password: setNewPassword,
+    };
+    setters[field](value);
+    setCreateError("");
+    setCreateErrors((previous) =>
+      previous[field]
+        ? { ...previous, [field]: validateCreateUserField(field, value) }
+        : previous,
+    );
+  };
 
+  const handleCreateUser = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    const values = {
+      username: newUsername.trim(),
+      email: newEmail.trim(),
+      password: newPassword,
+    };
+    const errors: CreateUserErrors = {};
+    for (const field of Object.keys(values) as CreateUserField[]) {
+      const error = validateCreateUserField(field, values[field]);
+      if (error) errors[field] = error;
+    }
+    setCreateErrors(errors);
+    setCreateError("");
+    const firstInvalidField = Object.keys(errors)[0];
+    if (firstInvalidField) {
+      document.getElementById(`new-student-${firstInvalidField}`)?.focus();
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const token =
-        document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("token="))
-          ?.split("=")[1] || localStorage.getItem("token");
+      const token = getToken();
 
       if (!token) {
-        showAlert(
-          "Phiên ng nhập ã hết hạn hoặc không tìm thấy token, vui lòng ng nhập lại!",
-          "success",
+        setCreateError(
+          "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để thêm người dùng.",
         );
 
         return;
@@ -134,11 +244,11 @@ export default function StudentList() {
         },
 
         body: JSON.stringify({
-          username: newUsername,
+          username: values.username,
 
-          email: newEmail,
+          email: values.email,
 
-          password: newPassword,
+          password: values.password,
 
           role: { id: 2 },
 
@@ -157,14 +267,34 @@ export default function StudentList() {
 
         setNewPassword("");
 
+        setCreateErrors({});
+
         fetchUsers();
       } else {
-        alert("Lá»—i: " + (await readApiError(res)));
+        const details: unknown = await res.json().catch(() => null);
+        const fieldErrors = getCreateUserErrors(details);
+        if (Object.keys(fieldErrors).length > 0) {
+          setCreateErrors(fieldErrors);
+          return;
+        }
+        const message =
+          res.status === 401
+            ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+            : res.status === 403
+              ? "Bạn không có quyền thêm người dùng. Vui lòng liên hệ quản trị viên."
+              : res.status === 409
+                ? "Thông tin tài khoản đã tồn tại. Vui lòng kiểm tra lại tên người dùng và email."
+                : res.status === 429
+                  ? "Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lúc rồi thử lại."
+                  : res.status >= 500
+                    ? "Máy chủ đang gặp lỗi. Vui lòng thử lại sau."
+                    : "Thông tin tài khoản chưa hợp lệ. Vui lòng kiểm tra lại các ô nhập.";
+        setCreateError(message);
       }
     } catch (err) {
       console.error(err);
 
-      showAlert("Đã có li xảy ra", "success");
+      setCreateError("Không thể lưu tài khoản. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -186,7 +316,8 @@ export default function StudentList() {
       let sortParams =
         '[{"orderBy":"status","order":"ASC"},{"orderBy":"studentCode","order":"ASC"}]';
       if (sortBy === "name_asc") {
-        sortParams = '[{"orderBy":"firstName","order":"ASC"}]';
+        sortParams =
+          '[{"orderBy":"username","order":"ASC"},{"orderBy":"id","order":"ASC"}]';
       } else if (sortBy === "id_asc") {
         sortParams = '[{"orderBy":"studentCode","order":"ASC"}]';
       }
@@ -309,7 +440,11 @@ export default function StudentList() {
   return (
     <>
       {alertMsg.isOpen && (
-        <div className="mb-4">
+        <div
+          role={alertMsg.variant === "error" ? "alert" : "status"}
+          aria-atomic="true"
+          className="fixed bottom-4 left-4 right-4 z-[100000] sm:bottom-6 sm:left-auto sm:right-6 sm:w-full sm:max-w-sm"
+        >
           <Alert
             variant={alertMsg.variant}
             title={
@@ -433,7 +568,7 @@ export default function StudentList() {
                     <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400 font-medium">
                       {user.studentCode
                         ? `#${user.studentCode}`
-                        : `#${user.id}`}
+                        : "Chưa cấp mã"}
                     </TableCell>
 
                     <TableCell className="py-3">
@@ -636,57 +771,100 @@ export default function StudentList() {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeCreateModal}
         className="max-w-[500px] p-5 sm:p-8"
       >
         <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90">
-          Thêm người dùng mi
+          Thêm người dùng mới
         </h3>
 
-        <div className="flex flex-col gap-4">
+        <form
+          noValidate
+          onSubmit={handleCreateUser}
+          aria-busy={isSubmitting}
+          className="flex flex-col gap-4"
+        >
+          {createError && (
+            <Alert
+              variant="error"
+              title="Không thể lưu tài khoản"
+              message={createError}
+            />
+          )}
           <div>
-            <Label>Tên người dùng</Label>
+            <Label htmlFor="new-student-username">
+              Tên người dùng <span className="text-error-500">*</span>
+            </Label>
 
             <Input
               type="text"
+              id="new-student-username"
+              name="username"
+              autoComplete="username"
+              required
               placeholder="Nhập tên người dùng"
               value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value)}
+              onChange={(e) => updateCreateField("username", e.target.value)}
+              error={Boolean(createErrors.username)}
+              hint={createErrors.username}
+              disabled={isSubmitting}
             />
           </div>
 
           <div>
-            <Label>Email</Label>
+            <Label htmlFor="new-student-email">
+              Email <span className="text-error-500">*</span>
+            </Label>
 
             <Input
               type="email"
+              id="new-student-email"
+              name="email"
+              autoComplete="email"
+              required
               placeholder="Nhập email"
               value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
+              onChange={(e) => updateCreateField("email", e.target.value)}
+              error={Boolean(createErrors.email)}
+              hint={createErrors.email}
+              disabled={isSubmitting}
             />
           </div>
 
           <div>
-            <Label>Mật khẩu</Label>
+            <Label htmlFor="new-student-password">
+              Mật khẩu <span className="text-error-500">*</span>
+            </Label>
 
             <Input
               type="password"
-              placeholder="Nhập mật khẩu"
+              id="new-student-password"
+              name="password"
+              autoComplete="new-password"
+              required
+              placeholder="Nhập mật khẩu từ 6 đến 72 ký tự"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(e) => updateCreateField("password", e.target.value)}
+              error={Boolean(createErrors.password)}
+              hint={createErrors.password}
+              disabled={isSubmitting}
             />
           </div>
 
           <div className="mt-4 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={closeCreateModal}
+              disabled={isSubmitting}
+            >
               Hủy
             </Button>
 
-            <Button onClick={handleCreateUser} disabled={isSubmitting}>
-              Lưu tài khoản
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Đang lưu..." : "Lưu tài khoản"}
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       <Modal

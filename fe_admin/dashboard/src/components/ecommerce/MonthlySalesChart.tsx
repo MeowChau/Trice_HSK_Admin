@@ -1,6 +1,13 @@
 ﻿"use client";
+import { useCallback, useEffect, useState } from "react";
 import { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
+import { apiFetch } from "@/lib/api";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import Alert from "@/components/ui/alert/Alert";
+import Button from "@/components/ui/button/Button";
+
+type MonthlyExams = { year: number; monthlyCounts: number[]; total: number };
 
 // Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -8,6 +15,54 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
 });
 
 export default function MonthlySalesChart() {
+  const [year] = useState(() =>
+    Number(
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+      }).format(new Date()),
+    ),
+  );
+  const [data, setData] = useState<MonthlyExams | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const requests = useLatestRequest();
+  const load = useCallback(async () => {
+    const request = requests.start();
+    setLoading(true);
+    setError("");
+    try {
+      const response = await apiFetch(`analytics/monthly-exams?year=${year}`, {
+        signal: request.signal,
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("monthlyExamsUnavailable");
+      const result: MonthlyExams = await response.json();
+      if (
+        result.year !== year ||
+        !Array.isArray(result.monthlyCounts) ||
+        result.monthlyCounts.length !== 12 ||
+        !result.monthlyCounts.every(
+          (count) => Number.isSafeInteger(count) && count >= 0,
+        ) ||
+        result.total !==
+          result.monthlyCounts.reduce((sum, count) => sum + count, 0)
+      ) {
+        throw new Error("monthlyExamsInvalid");
+      }
+      if (request.isCurrent()) setData(result);
+    } catch {
+      if (request.isCurrent())
+        setError("Không tải được số lượng đề thi. Vui lòng thử lại.");
+    } finally {
+      if (request.isCurrent()) setLoading(false);
+    }
+  }, [year, requests]);
+  useEffect(() => {
+    void load();
+    return () => requests.cancel();
+  }, [load, requests]);
+
   const options: ApexOptions = {
     colors: ["#465fff"],
     chart: {
@@ -63,6 +118,8 @@ export default function MonthlySalesChart() {
       fontFamily: "Outfit",
     },
     yaxis: {
+      min: 0,
+      decimalsInFloat: 0,
       title: {
         text: undefined,
       },
@@ -83,14 +140,14 @@ export default function MonthlySalesChart() {
         show: false,
       },
       y: {
-        formatter: (val: number) => `${val}`,
+        formatter: (val: number) => `${val} đề thi`,
       },
     },
   };
   const series = [
     {
       name: "Đề thi",
-      data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      data: data?.monthlyCounts ?? [],
     },
   ];
 
@@ -101,16 +158,57 @@ export default function MonthlySalesChart() {
           Số lượng đề thi hàng tháng
         </h3>
       </div>
+      <p className="mt-1 text-theme-sm text-gray-500 dark:text-gray-400">
+        Năm {year}
+        {data && !loading && !error ? ` · Tổng ${data.total} đề thi` : ""}
+      </p>
 
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
-        <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
-          <ReactApexChart
-            options={options}
-            series={series}
-            type="bar"
-            height={180}
-          />
-        </div>
+      <div
+        aria-busy={loading}
+        aria-label={`Số đề thi được tạo theo tháng trong năm ${year}`}
+      >
+        {loading ? (
+          <p
+            role="status"
+            className="flex h-[180px] items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+          >
+            Đang tải biểu đồ…
+          </p>
+        ) : error ? (
+          <div className="py-5">
+            <Alert
+              variant="error"
+              title="Chưa tải được thống kê đề thi"
+              message={error}
+            />
+            <div className="mt-3">
+              <Button size="sm" variant="outline" onClick={() => void load()}>
+                Thử lại
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="max-w-full overflow-x-auto custom-scrollbar">
+              <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
+                <ReactApexChart
+                  options={options}
+                  series={series}
+                  type="bar"
+                  height={180}
+                />
+              </div>
+            </div>
+            {data?.total === 0 && (
+              <p
+                role="status"
+                className="pb-4 text-sm text-gray-500 dark:text-gray-400"
+              >
+                Chưa có đề thi được tạo trong năm {year}.
+              </p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
