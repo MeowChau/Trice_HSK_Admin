@@ -187,6 +187,10 @@ export class UsersService {
     });
   }
 
+  count(filterOptions?: FilterUserDto | null): Promise<number> {
+    return this.usersRepository.count(filterOptions);
+  }
+
   findById(id: User['id']): Promise<NullableType<User>> {
     return this.usersRepository.findById(id);
   }

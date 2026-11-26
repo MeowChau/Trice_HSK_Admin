@@ -33,12 +33,13 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
+        <span className="relative mr-3 block size-11 shrink-0 overflow-hidden rounded-full">
           <Image
-            width={44}
-            height={44}
+            fill
+            sizes="44px"
+            className="rounded-full object-cover object-center"
             src="/images/logo/809209303_18148112017569788_2471671458626274949_n.jpg"
-            alt="User"
+            alt="Ảnh đại diện quản trị viên"
           />
         </span>
 

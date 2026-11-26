@@ -27,16 +27,12 @@ import { Roles } from '../roles/roles.decorator';
 import { RoleEnum } from '../roles/roles.enum';
 import { AuthGuard } from '@nestjs/passport';
 
-import {
-  InfinityPaginationResponse,
-  InfinityPaginationResponseDto,
-} from '../utils/dto/infinity-pagination-response.dto';
+import { UserPaginationResponseDto } from './dto/user-pagination-response.dto';
 import { NullableType } from '../utils/types/nullable.type';
 import { QueryUserDto } from './dto/query-user.dto';
 import { User } from './domain/user';
 import { UsersService } from './users.service';
 import { RolesGuard } from '../roles/roles.guard';
-import { infinityPagination } from '../utils/infinity-pagination';
 
 @ApiBearerAuth()
 @Roles(RoleEnum.admin)
@@ -62,7 +58,7 @@ export class UsersController {
   }
 
   @ApiOkResponse({
-    type: InfinityPaginationResponse(User),
+    type: UserPaginationResponseDto,
   })
   @SerializeOptions({
     groups: ['admin'],
@@ -71,15 +67,15 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   async findAll(
     @Query() query: QueryUserDto,
-  ): Promise<InfinityPaginationResponseDto<User>> {
+  ): Promise<UserPaginationResponseDto> {
     const page = query?.page ?? 1;
     let limit = query?.limit ?? 10;
     if (limit > 50) {
       limit = 50;
     }
 
-    return infinityPagination(
-      await this.usersService.findManyWithPagination({
+    const [data, total] = await Promise.all([
+      this.usersService.findManyWithPagination({
         filterOptions: query?.filters,
         sortOptions: query?.sort,
         paginationOptions: {
@@ -87,8 +83,17 @@ export class UsersController {
           limit,
         },
       }),
-      { page, limit },
-    );
+      this.usersService.count(query?.filters),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+      hasNextPage: page * limit < total,
+    };
   }
 
   @ApiOkResponse({

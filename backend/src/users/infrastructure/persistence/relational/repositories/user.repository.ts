@@ -64,15 +64,9 @@ export class UsersRelationalRepository implements UserRepository {
     return { ...data, studentCode };
   }
 
-  async findManyWithPagination({
-    filterOptions,
-    sortOptions,
-    paginationOptions,
-  }: {
-    filterOptions?: FilterUserDto | null;
-    sortOptions?: SortUserDto[] | null;
-    paginationOptions: IPaginationOptions;
-  }): Promise<User[]> {
+  private buildWhere(
+    filterOptions?: FilterUserDto | null,
+  ): FindOptionsWhere<UserEntity> {
     const where: FindOptionsWhere<UserEntity> = {};
     if (filterOptions?.statuses?.length) {
       where.status = {
@@ -97,10 +91,29 @@ export class UsersRelationalRepository implements UserRepository {
       where.position = filterOptions.position;
     }
 
+    return where;
+  }
+
+  count(filterOptions?: FilterUserDto | null): Promise<number> {
+    return this.usersRepository.count({
+      where: this.buildWhere(filterOptions),
+      withDeleted: true,
+    });
+  }
+
+  async findManyWithPagination({
+    filterOptions,
+    sortOptions,
+    paginationOptions,
+  }: {
+    filterOptions?: FilterUserDto | null;
+    sortOptions?: SortUserDto[] | null;
+    paginationOptions: IPaginationOptions;
+  }): Promise<User[]> {
     const entities = await this.usersRepository.find({
       skip: (paginationOptions.page - 1) * paginationOptions.limit,
       take: paginationOptions.limit,
-      where: where,
+      where: this.buildWhere(filterOptions),
       order: sortOptions?.reduce((accumulator, sort) => {
         if (sort.orderBy === 'status' || sort.orderBy === 'role') {
           return {

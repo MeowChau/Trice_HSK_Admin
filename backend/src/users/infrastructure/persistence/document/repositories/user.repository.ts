@@ -24,6 +24,36 @@ export class UsersDocumentRepository implements UserRepository {
     return UserMapper.toDomain(userObject);
   }
 
+  private buildWhere(
+    filterOptions?: FilterUserDto | null,
+  ): QueryFilter<UserSchemaClass> {
+    const where: QueryFilter<UserSchemaClass> = {};
+    if (filterOptions?.roles?.length) {
+      where['role._id'] = {
+        $in: filterOptions.roles.map((role) => role.id.toString()),
+      };
+    }
+
+    if (filterOptions?.statuses?.length) {
+      where['status._id'] = {
+        $in: filterOptions.statuses.map((status) => status.id.toString()),
+      };
+    }
+    if (filterOptions?.currentHskLevel != null) {
+      where.currentHskLevel = filterOptions.currentHskLevel;
+    }
+    if (filterOptions?.position) {
+      where.position = filterOptions.position;
+    }
+    return where;
+  }
+
+  count(filterOptions?: FilterUserDto | null): Promise<number> {
+    return this.usersModel
+      .countDocuments(this.buildWhere(filterOptions))
+      .exec();
+  }
+
   async findManyWithPagination({
     filterOptions,
     sortOptions,
@@ -33,15 +63,8 @@ export class UsersDocumentRepository implements UserRepository {
     sortOptions?: SortUserDto[] | null;
     paginationOptions: IPaginationOptions;
   }): Promise<User[]> {
-    const where: QueryFilter<UserSchemaClass> = {};
-    if (filterOptions?.roles?.length) {
-      where['role._id'] = {
-        $in: filterOptions.roles.map((role) => role.id.toString()),
-      };
-    }
-
     const userObjects = await this.usersModel
-      .find(where)
+      .find(this.buildWhere(filterOptions))
       .sort(
         sortOptions?.reduce(
           (accumulator, sort) => ({

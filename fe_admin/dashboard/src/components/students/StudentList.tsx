@@ -3,8 +3,6 @@ import { useCallback } from "react";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import type { UserFilters } from "@/lib/api-types";
 
-import { MoreDotIcon } from "../../icons";
-
 import React, { useEffect, useState } from "react";
 
 import { Modal } from "../ui/modal";
@@ -36,7 +34,7 @@ interface Status {
 interface UserRow {
   id: string;
 
-  studentCode: number;
+  studentCode?: number | null;
 
   username?: string;
 
@@ -83,11 +81,10 @@ export default function StudentList() {
 
   const [filterLevel, setFilterLevel] = useState<string>("");
 
-  const [hasNextPage, setHasNextPage] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const [newUsername, setNewUsername] = useState("");
 
@@ -172,6 +169,7 @@ export default function StudentList() {
 
   const fetchUsers = useCallback(async () => {
     const request = requests.start();
+    setIsLoading(true);
 
     try {
       let queryUrl = `users?page=${page}&limit=${limit}`;
@@ -208,12 +206,19 @@ export default function StudentList() {
       if (res.ok) {
         const data = await res.json();
         if (!request.isCurrent()) return;
+        const lastPage = Math.max(1, data.totalPages);
+        setTotalPages(lastPage);
+        if (page > lastPage) {
+          setPage(lastPage);
+          return;
+        }
         setUsers(data.data);
-        setHasNextPage(data.hasNextPage);
       }
     } catch (err) {
       if (!request.isCurrent()) return;
       console.error("Failed to fetch users", err);
+    } finally {
+      if (request.isCurrent()) setIsLoading(false);
     }
   }, [requests, page, limit, sortBy, filterLevel]);
 
@@ -325,8 +330,8 @@ export default function StudentList() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pb-3 pt-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6">
-        <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
               Danh sách tài khoản
             </h3>
@@ -336,9 +341,10 @@ export default function StudentList() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <select
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              aria-label="Sắp xếp danh sách tài khoản"
               value={sortBy}
               onChange={(e) => {
                 setSortBy(e.target.value);
@@ -354,70 +360,71 @@ export default function StudentList() {
 
             <select
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              aria-label="Lọc tài khoản theo trình độ"
               value={filterLevel}
               onChange={(e) => {
                 setFilterLevel(e.target.value);
                 setPage(1);
               }}
             >
-              <option value="">Tất cả trình độ </option>
+              <option value="">Tất cả trình độ</option>
 
-              <option value="1">Trình 1</option>
+              <option value="1">HSK 1</option>
 
-              <option value="2">Trình 2</option>
+              <option value="2">HSK 2</option>
 
-              <option value="3">Trình 3</option>
+              <option value="3">HSK 3</option>
 
-              <option value="4">Trình 4</option>
+              <option value="4">HSK 4</option>
 
-              <option value="5">Trình 5</option>
+              <option value="5">HSK 5</option>
 
-              <option value="6">Trình 6</option>
+              <option value="6">HSK 6</option>
 
-              <option value="7">Trình 7</option>
+              <option value="7">HSK 7</option>
 
-              <option value="8">Trình 8</option>
+              <option value="8">HSK 8</option>
 
-              <option value="9">Trình 9</option>
+              <option value="9">HSK 9</option>
             </select>
           </div>
         </div>
 
         <div className="max-w-full overflow-x-auto">
-          <Table>
+          <Table className="w-full min-w-[760px]! table-fixed">
             <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
               <TableRow>
                 <TableCell
                   isHeader
-                  className="w-1/4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className="w-[110px] whitespace-nowrap py-3 pr-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Mã học viên
                 </TableCell>
 
                 <TableCell
                   isHeader
-                  className="w-1/4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className=" whitespace-nowrap py-3 pr-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Tên người dùng
                 </TableCell>
 
                 <TableCell
                   isHeader
-                  className="w-1/4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className="w-[145px] whitespace-nowrap py-3 pr-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Trình độ hiện tại
                 </TableCell>
 
                 <TableCell
                   isHeader
-                  className="w-1/4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className="w-[160px] whitespace-nowrap py-3 pr-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Trạng thái tài khoản
                 </TableCell>
 
                 <TableCell
                   isHeader
-                  className="py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
+                  className="w-[140px] whitespace-nowrap py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
                   Thao tác
                 </TableCell>
@@ -431,13 +438,14 @@ export default function StudentList() {
                 return (
                   <TableRow key={user.id}>
                     <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400 font-medium">
-                      {user.studentCode
-                        ? `#${user.studentCode}`
-                        : `#${user.id}`}
+                      #{user.studentCode ?? user.id}
                     </TableCell>
 
-                    <TableCell className="py-3">
-                      <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                    <TableCell className="py-3 pr-4">
+                      <p
+                        title={user.username || "Chưa cập nhật"}
+                        className="truncate font-medium text-gray-800 text-theme-sm dark:text-white/90"
+                      >
                         {user.username || "Chưa cập nhật"}
                       </p>
                     </TableCell>
@@ -454,87 +462,78 @@ export default function StudentList() {
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400 text-center relative">
-                      <button
-                        onClick={() =>
-                          setOpenDropdownId(
-                            openDropdownId === user.id ? null : user.id,
-                          )
-                        }
-                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                      >
-                        <MoreDotIcon className="w-5 h-5" />
-                      </button>
-                      {openDropdownId === user.id && (
-                        <div className="absolute right-10 top-1/2 -translate-y-1/2 flex items-center space-x-1 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-full px-2 py-1 z-10 transition-all duration-200">
-                          <button
-                            onClick={() => {
-                              setOpenDropdownId(null);
-                              handleAction(user.id, "cancel_account");
-                            }}
-                            className="text-error-500 hover:bg-error-50 p-1.5 rounded-full transition-colors"
-                            title="Hủy tài khoản"
+                    <TableCell className="py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleAction(user.id, "cancel_account");
+                          }}
+                          className="text-error-500 hover:bg-error-50 p-1.5 rounded-full transition-colors"
+                          aria-label="Hủy tài khoản"
+                          title="Hủy tài khoản"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                           >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => {
-                              setOpenDropdownId(null);
-                              handleAction(user.id, "revert_pending");
-                            }}
-                            className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-full transition-colors"
-                            title="Quay lại chờ duyệt"
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleAction(user.id, "revert_pending");
+                          }}
+                          className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-full transition-colors"
+                          aria-label="Quay lại chờ duyệt"
+                          title="Quay lại chờ duyệt"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                           >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => {
-                              setOpenDropdownId(null);
-                              handleAction(user.id, "temp_password");
-                            }}
-                            className="text-gray-500 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
-                            title="Cấp mật khẩu tạm thời"
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleAction(user.id, "temp_password");
+                          }}
+                          className="text-gray-500 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
+                          aria-label="Cấp mật khẩu tạm thời"
+                          title="Cấp mật khẩu tạm thời"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                           >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -554,84 +553,39 @@ export default function StudentList() {
           </Table>
         </div>
 
-        {/* Pagination Controls */}
-
-        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 dark:border-gray-800 dark:bg-white/[0.03] mt-4 rounded-b-2xl">
-          <div className="flex flex-1 justify-between sm:hidden">
+        <nav
+          aria-label="Phân trang danh sách tài khoản"
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 py-3 dark:border-gray-800"
+        >
+          <p
+            aria-live="polite"
+            className="whitespace-nowrap text-sm text-gray-700 dark:text-gray-400"
+          >
+            Trang {page}/{totalPages}
+          </p>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              type="button"
+              aria-label="Trang trước"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={isLoading || page <= 1}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              Trưc
+              Trước
             </button>
-
             <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!hasNextPage}
-              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              type="button"
+              aria-label="Trang sau"
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))
+              }
+              disabled={isLoading || page >= totalPages}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               Sau
             </button>
           </div>
-
-          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700 dark:text-gray-400">
-                Trang <span className="font-medium">{page}</span>
-              </p>
-            </div>
-
-            <div>
-              <nav
-                className="isolate inline-flex -space-x-px rounded-md shadow-sm"
-                aria-label="Pagination"
-              >
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 dark:ring-gray-700 dark:hover:bg-gray-800"
-                >
-                  <span className="sr-only">Previous</span>
-
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={!hasNextPage}
-                  className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 dark:ring-gray-700 dark:hover:bg-gray-800"
-                >
-                  <span className="sr-only">Next</span>
-
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
+        </nav>
       </div>
 
       <Modal
@@ -640,14 +594,19 @@ export default function StudentList() {
         className="max-w-[500px] p-5 sm:p-8"
       >
         <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90">
-          Thêm người dùng mi
+          Thêm người dùng mới
         </h3>
 
-        <div className="flex flex-col gap-4">
+        <form onSubmit={handleCreateUser} className="flex flex-col gap-4">
           <div>
-            <Label>Tên người dùng</Label>
+            <Label htmlFor="new-student-username">
+              Tên người dùng <span className="text-error-500">*</span>
+            </Label>
 
             <Input
+              id="new-student-username"
+              name="username"
+              required
               type="text"
               placeholder="Nhập tên người dùng"
               value={newUsername}
@@ -656,9 +615,14 @@ export default function StudentList() {
           </div>
 
           <div>
-            <Label>Email</Label>
+            <Label htmlFor="new-student-email">
+              Email <span className="text-error-500">*</span>
+            </Label>
 
             <Input
+              id="new-student-email"
+              name="email"
+              required
               type="email"
               placeholder="Nhập email"
               value={newEmail}
@@ -667,9 +631,14 @@ export default function StudentList() {
           </div>
 
           <div>
-            <Label>Mật khẩu</Label>
+            <Label htmlFor="new-student-password">
+              Mật khẩu <span className="text-error-500">*</span>
+            </Label>
 
             <Input
+              id="new-student-password"
+              name="password"
+              required
               type="password"
               placeholder="Nhập mật khẩu"
               value={newPassword}
@@ -682,11 +651,11 @@ export default function StudentList() {
               Hủy
             </Button>
 
-            <Button onClick={handleCreateUser} disabled={isSubmitting}>
-              Lưu tài khoản
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Đang lưu…" : "Lưu tài khoản"}
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       <Modal

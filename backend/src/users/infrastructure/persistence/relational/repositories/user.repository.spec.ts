@@ -4,6 +4,7 @@ import { ConflictException } from '@nestjs/common';
 import { UsersRelationalRepository } from './user.repository';
 import { UserEntity } from '../entities/user.entity';
 import { User } from '../../../../domain/user';
+import { Repository } from 'typeorm';
 
 describe('UsersRelationalRepository student codes', () => {
   let repository: UsersRelationalRepository;
@@ -171,6 +172,38 @@ describe('UsersRelationalRepository student codes', () => {
     });
     expect(findOne).toHaveBeenLastCalledWith({
       where: { username: 'student' },
+    });
+  });
+});
+
+describe('UsersRelationalRepository pagination counts', () => {
+  it('should count every matching account with the same filters and deleted-account visibility as the page', async () => {
+    const persistence = {
+      find: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(25),
+    };
+    const repository = new UsersRelationalRepository(
+      persistence as unknown as Repository<UserEntity>,
+    );
+    const filterOptions = {
+      roles: [{ id: 2 }],
+      statuses: [{ id: 1 }, { id: 2 }],
+      currentHskLevel: 3,
+    };
+    await repository.findManyWithPagination({
+      filterOptions,
+      paginationOptions: { page: 2, limit: 10 },
+    });
+    await expect(repository.count(filterOptions)).resolves.toBe(25);
+    const pageOptions = persistence.find.mock.calls[0][0];
+    expect(persistence.count).toHaveBeenCalledWith({
+      where: pageOptions.where,
+      withDeleted: true,
+    });
+    expect(pageOptions).toMatchObject({
+      skip: 10,
+      take: 10,
+      withDeleted: true,
     });
   });
 });

@@ -20,7 +20,7 @@ interface Status {
 
 interface UserRow {
   id: string;
-  studentCode: number;
+  studentCode?: number | null;
   username?: string;
   currentHskLevel: number;
   status: Status;
@@ -91,15 +91,16 @@ export default function RecentUsers() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pb-3 pt-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6">
-      <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
             Người dùng gần đây
           </h3>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
+            aria-label="Sắp xếp người dùng gần đây"
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
             value={sortBy}
             onChange={(e) => {
@@ -114,6 +115,7 @@ export default function RecentUsers() {
 
           <select
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+            aria-label="Lọc người dùng gần đây theo trình độ"
             value={filterLevel}
             onChange={(e) => {
               setFilterLevel(e.target.value);
@@ -121,20 +123,16 @@ export default function RecentUsers() {
             }}
           >
             <option value="">Tất cả trình độ</option>
-            <option value="1">Trình độ 1</option>
-            <option value="2">Trình độ 2</option>
-            <option value="3">Trình độ 3</option>
-            <option value="4">Trình độ 4</option>
-            <option value="5">Trình độ 5</option>
-            <option value="6">Trình độ 6</option>
-            <option value="7">Trình độ 7</option>
-            <option value="8">Trình độ 8</option>
-            <option value="9">Trình độ 9</option>
+            {Array.from({ length: 9 }, (_, index) => (
+              <option key={index + 1} value={index + 1}>
+                HSK {index + 1}
+              </option>
+            ))}
           </select>
         </div>
       </div>
       <div className="max-w-full overflow-x-auto">
-        <Table>
+        <Table className="w-full min-w-[560px]! table-fixed">
           <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
             <TableRow>
               <TableCell
@@ -170,10 +168,13 @@ export default function RecentUsers() {
               return (
                 <TableRow key={user.id}>
                   <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400 font-medium">
-                    {user.studentCode ? `#${user.studentCode}` : ""}
+                    #{user.studentCode ?? user.id}
                   </TableCell>
-                  <TableCell className="py-3">
-                    <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                  <TableCell className="py-3 pr-4">
+                    <p
+                      title={user.username || "Chưa cập nhật"}
+                      className="truncate font-medium text-gray-800 text-theme-sm dark:text-white/90"
+                    >
                       {user.username || "Chưa cập nhật"}
                     </p>
                   </TableCell>
