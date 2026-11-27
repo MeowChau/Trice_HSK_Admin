@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsInt,
+  IsBoolean,
   IsIn,
   IsArray,
   IsObject,
@@ -19,6 +20,16 @@ import { StatusDto } from '../../statuses/dto/status.dto';
 import { parseJsonQuery } from '../../utils/transformers/json-query.transformer';
 
 export class FilterUserDto {
+  @ApiPropertyOptional({ type: Boolean })
+  @IsOptional()
+  @IsBoolean()
+  excludeDeleted?: boolean;
+
+  @ApiPropertyOptional({ type: Boolean })
+  @IsOptional()
+  @IsBoolean()
+  onlyDeleted?: boolean;
+
   @ApiPropertyOptional({ type: [RoleDto] })
   @IsOptional()
   @IsArray()

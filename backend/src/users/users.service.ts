@@ -13,7 +13,7 @@ import { randomBytes } from 'node:crypto';
 import { AuthProvidersEnum } from '../auth/auth-providers.enum';
 import { FilesService } from '../files/files.service';
 import { RoleEnum } from '../roles/roles.enum';
-import { StatusEnum } from '../statuses/statuses.enum';
+import { getStatusLabel, StatusEnum } from '../statuses/statuses.enum';
 import { IPaginationOptions } from '../utils/types/pagination-options';
 import { FileType } from '../files/domain/file';
 import { Role } from '../roles/domain/role';
@@ -406,19 +406,25 @@ export class UsersService {
         updateUserDto.status.id !== oldUser?.status?.id
       ) {
         changed.push('status');
-        oldSnap.status =
-          oldUser?.status?.name ||
-          (oldUser?.status?.id === 1 ? 'Active' : 'Inactive');
-        newSnap.status =
-          updatedUser.status?.name ||
-          (updateUserDto.status.id === 1 ? 'Active' : 'Inactive');
+        oldSnap.statusId = oldUser?.status?.id ?? null;
+        oldSnap.status = getStatusLabel(oldSnap.statusId);
+        newSnap.statusId = updateUserDto.status.id;
+        newSnap.status = getStatusLabel(newSnap.statusId);
       }
 
-      let summary = `Cập nhật thông tin ${isTeacher ? 'giảng viên' : 'người dùng'} ${updatedUser.fullName || updatedUser.email}`;
-      if (changed.includes('position')) {
-        summary = `Đổi chức vụ giảng viên ${updatedUser.fullName || updatedUser.email} thành ${updatedUser.position}`;
-      } else if (changed.includes('status')) {
-        summary = `Đổi trạng thái tài khoản ${updatedUser.fullName || updatedUser.email} thành ${updatedUser.status?.name}`;
+      const accountName =
+        updatedUser.fullName ||
+        updatedUser.email ||
+        oldUser?.fullName ||
+        oldUser?.email ||
+        updatedUser.username ||
+        oldUser?.username ||
+        `ID ${id}`;
+      let summary = `Cập nhật thông tin ${isTeacher ? 'giảng viên' : 'người dùng'} ${accountName}`;
+      if (changed.includes('status')) {
+        summary = `Đổi trạng thái tài khoản ${accountName} thành ${newSnap.status}`;
+      } else if (changed.includes('position')) {
+        summary = `Đổi chức vụ giảng viên ${accountName} thành ${updatedUser.position}`;
       }
 
       this.auditLogsService.record({

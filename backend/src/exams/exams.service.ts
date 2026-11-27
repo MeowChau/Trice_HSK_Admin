@@ -55,6 +55,13 @@ export class ExamsService {
       );
     }
 
+    // Aggregate the full filtered result before applying sorting or pagination.
+    const statisticsQuery = query
+      .clone()
+      .select('exam.hskLevel', 'hskLevel')
+      .addSelect('COUNT(exam.id)', 'count')
+      .groupBy('exam.hskLevel');
+
     query
       .addSelect(
         'CASE WHEN exam.id = (SELECT MIN(sample.id) FROM exam sample WHERE sample."hskLevel" = exam."hskLevel" AND sample."deletedAt" IS NULL) THEN 0 ELSE 1 END',
@@ -65,7 +72,20 @@ export class ExamsService {
       .skip(skip)
       .take(limit);
 
-    const [data, total] = await query.getManyAndCount();
+    const [data, counts] = await Promise.all([
+      query.getMany(),
+      statisticsQuery.getRawMany<{ hskLevel: number; count: string }>(),
+    ]);
+    const statistics = { primary: 0, intermediate: 0, advanced: 0 };
+    let total = 0;
+    for (const row of counts) {
+      const level = Number(row.hskLevel);
+      const count = Number(row.count);
+      total += count;
+      if (level >= 1 && level <= 2) statistics.primary += count;
+      else if (level >= 3 && level <= 4) statistics.intermediate += count;
+      else if (level >= 5 && level <= 9) statistics.advanced += count;
+    }
 
     const sections = data.length
       ? await this.examSectionRepository.find({
@@ -97,6 +117,7 @@ export class ExamsService {
     return {
       data: formattedData,
       total,
+      statistics,
       page,
       limit,
       totalPages: Math.ceil(total / limit),

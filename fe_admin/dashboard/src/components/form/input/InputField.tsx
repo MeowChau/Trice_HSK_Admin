@@ -61,6 +61,8 @@ const Input: FC<InputProps> = ({
         name={name}
         autoComplete={autoComplete}
         required={required}
+        aria-invalid={error || undefined}
+        aria-describedby={hint && id ? `${id}-hint` : undefined}
         placeholder={placeholder}
         defaultValue={defaultValue}
         value={value}
@@ -75,6 +77,8 @@ const Input: FC<InputProps> = ({
       {/* Optional Hint Text */}
       {hint && (
         <p
+          id={id ? `${id}-hint` : undefined}
+          role={error ? "alert" : undefined}
           className={`mt-1.5 text-xs ${
             error
               ? "text-error-500"

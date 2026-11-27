@@ -1,8 +1,12 @@
 import { databaseDate, studyDate } from '../utils/study-date';
 import { aggregateContent, recentMonths } from './content-counts';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { StudySessionLogEntity } from '../study-sessions/infrastructure/persistence/relational/entities/study-session-log.entity';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { QuestionEntity } from '../questions/infrastructure/persistence/relational/entities/question.entity';
@@ -13,6 +17,10 @@ import {
   totalExperience,
 } from '../gamification/gamification.service';
 import { VocabularyProgressDto } from './dto/vocabulary-progress.dto';
+import { RegistrationsQueryDto } from './dto/registrations-response.dto';
+import { RoleEnum } from '../roles/roles.enum';
+import { StatusEnum } from '../statuses/statuses.enum';
+import { UserMapper } from '../users/infrastructure/persistence/relational/mappers/user.mapper';
 
 const CHECK_IN_MODULE = 'daily_checkin';
 const DAILY_CHECK_IN_EXP = 10;
@@ -345,7 +353,69 @@ export class AnalyticsService {
     };
   }
 
-  async getRegistrations() {
+  async getRegistrations(query: RegistrationsQueryDto = {}) {
+    if (query.from !== undefined || query.to !== undefined) {
+      const { from, to } = query;
+      if (!from || !to) {
+        throw new BadRequestException(
+          'Vui lòng chọn đủ ngày bắt đầu và kết thúc.',
+        );
+      }
+      if (from > to) {
+        throw new BadRequestException(
+          'Ngày bắt đầu không được sau ngày kết thúc.',
+        );
+      }
+      const dayMs = 86400000;
+      const firstDay = Date.parse(`${from}T00:00:00+07:00`);
+      const lastDay = Date.parse(`${to}T00:00:00+07:00`);
+      const dayCount = (lastDay - firstDay) / dayMs + 1;
+      if (!Number.isInteger(dayCount) || dayCount < 1 || dayCount > 366) {
+        throw new BadRequestException(
+          'Mỗi lần xem tối đa 366 ngày. Vui lòng chọn khoảng ngày hợp lệ.',
+        );
+      }
+
+      // createdAt is a PostgreSQL timestamp stored in UTC. Convert to Vietnam
+      // civil days for grouping; use UTC strings for the indexed range filter.
+      const dayExpression = `TO_CHAR(user.createdAt AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')`;
+      const rows = await this.userRepository
+        .createQueryBuilder('user')
+        .select(dayExpression, 'date')
+        .addSelect('user.roleId', 'roleId')
+        .addSelect('COUNT(user.id)', 'count')
+        .where('user.createdAt >= :from AND user.createdAt < :until', {
+          from: new Date(firstDay).toISOString().slice(0, 23),
+          until: new Date(lastDay + dayMs).toISOString().slice(0, 23),
+        })
+        .andWhere('user.roleId IN (:...roles)', { roles: [2, 3] })
+        .groupBy(dayExpression)
+        .addGroupBy('user.roleId')
+        .getRawMany<{ date: string; roleId: number; count: string }>();
+
+      const dates = Array.from({ length: dayCount }, (_, index) =>
+        studyDate(new Date(firstDay + index * dayMs)),
+      );
+      const dateIndexes = new Map(dates.map((date, index) => [date, index]));
+      const newUsers: number[] = Array(dayCount).fill(0);
+      const newTeachers: number[] = Array(dayCount).fill(0);
+      for (const row of rows) {
+        const index = dateIndexes.get(row.date);
+        if (index === undefined) continue;
+        const series = Number(row.roleId) === 2 ? newUsers : newTeachers;
+        series[index] = Number(row.count);
+      }
+      return {
+        from,
+        to,
+        startMonth: Number(from.slice(5, 7)),
+        endMonth: Number(to.slice(5, 7)),
+        dates,
+        newUsers,
+        newTeachers,
+      };
+    }
+
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth() + 1; // 1-12
@@ -385,6 +455,36 @@ export class AnalyticsService {
       endMonth,
       newUsers,
       newTeachers,
+    };
+  }
+
+  async getMonthlyExams(year = Number(studyDate().slice(0, 4))) {
+    if (!Number.isInteger(year) || year < 1900 || year > 2100) {
+      throw new BadRequestException('Năm phải là số nguyên từ 1900 đến 2100.');
+    }
+    const monthExpression =
+      "EXTRACT(MONTH FROM (exam.createdAt AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh'))";
+    const rows = await this.examRepository
+      .createQueryBuilder('exam')
+      .select(monthExpression, 'month')
+      .addSelect('COUNT(exam.id)', 'count')
+      .where('exam.createdAt >= :from AND exam.createdAt < :until', {
+        from: new Date(`${year}-01-01T00:00:00+07:00`)
+          .toISOString()
+          .slice(0, 23),
+        until: new Date(`${year + 1}-01-01T00:00:00+07:00`)
+          .toISOString()
+          .slice(0, 23),
+      })
+      .groupBy(monthExpression)
+      .getRawMany<{ month: string; count: string }>();
+    const monthlyCounts: number[] = Array(12).fill(0);
+    for (const row of rows)
+      monthlyCounts[Number(row.month) - 1] = Number(row.count);
+    return {
+      year,
+      monthlyCounts,
+      total: monthlyCounts.reduce((sum, count) => sum + count, 0),
     };
   }
 
@@ -449,10 +549,12 @@ export class AnalyticsService {
     const months = recentMonths(now);
     const [teachers, questions, exams, practices] = await Promise.all([
       this.userRepository.find({
-        where: { role: { id: 3 } },
+        where: {
+          role: { id: RoleEnum.teacher },
+          status: { id: In([StatusEnum.active, StatusEnum.pending]) },
+        },
         relations: ['photo', 'status'],
         order: { createdAt: 'DESC' },
-        withDeleted: true,
         select: {
           id: true,
           fullName: true,
@@ -472,18 +574,23 @@ export class AnalyticsService {
     ]);
     const totalTeachers = teachers.length;
     const activeTeachers = teachers.filter(
-      (t) => t.status?.id === 1 && !t.deletedAt,
+      (t) => t.status?.id === StatusEnum.active,
     ).length;
 
-    // Growth calculation: teachers created this month vs last month
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-
-    const startOfThisMonth = new Date(currentYear, currentMonth, 1);
-    const startOfLastMonth = new Date(currentYear, currentMonth - 1, 1);
+    // Compare new eligible accounts, not the current all-time teacher total.
+    // Vietnam month boundaries must not depend on the server's timezone.
+    const [currentYear, currentMonth] = studyDate(now).split('-').map(Number);
+    const startOfThisMonth = new Date(
+      Date.UTC(currentYear, currentMonth - 1, 1) - 7 * 60 * 60 * 1000,
+    );
+    const startOfLastMonth = new Date(
+      Date.UTC(currentYear, currentMonth - 2, 1) - 7 * 60 * 60 * 1000,
+    );
 
     const thisMonthTeachers = teachers.filter(
-      (t) => new Date(t.createdAt) >= startOfThisMonth,
+      (t) =>
+        new Date(t.createdAt) >= startOfThisMonth &&
+        new Date(t.createdAt) <= now,
     ).length;
     const lastMonthTeachers = teachers.filter(
       (t) =>
@@ -491,14 +598,15 @@ export class AnalyticsService {
         new Date(t.createdAt) < startOfThisMonth,
     ).length;
 
-    let growthPercentage = 0;
-    if (lastMonthTeachers === 0) {
-      growthPercentage = thisMonthTeachers > 0 ? 100 : 0;
-    } else {
-      growthPercentage = Math.round(
-        ((thisMonthTeachers - lastMonthTeachers) / lastMonthTeachers) * 100,
-      );
-    }
+    const growthPercentage =
+      lastMonthTeachers > 0
+        ? Math.round(
+            ((thisMonthTeachers - lastMonthTeachers) / lastMonthTeachers) *
+              1000,
+          ) / 10
+        : thisMonthTeachers === 0
+          ? 0
+          : null;
 
     const totalQuestionsContributed = questions.reduce(
       (sum, row) => sum + Number(row.count),
@@ -511,9 +619,11 @@ export class AnalyticsService {
 
     // 2. Position Distribution (Donut Chart)
     const b1Count = teachers.filter(
-      (t) => (t.position || 'Bậc 1') === 'Bậc 1',
+      (t) => UserMapper.normalizeTeacherPosition(t.position) === 'Bậc 1',
     ).length;
-    const b2Count = teachers.filter((t) => t.position === 'Bậc 2').length;
+    const b2Count = teachers.filter(
+      (t) => UserMapper.normalizeTeacherPosition(t.position) === 'Bậc 2',
+    ).length;
     const positionDonut = {
       labels: ['Bậc 1', 'Bậc 2'],
       counts: [b1Count, b2Count],
@@ -571,10 +681,11 @@ export class AnalyticsService {
         id: t.id,
         fullName: t.fullName || t.username || 'Giảng viên',
         email: t.email || t.username,
-        position: t.position || 'Bậc 1',
+        position: UserMapper.normalizeTeacherPosition(t.position),
         status: {
-          id: t.status?.id || 1,
-          name: t.status?.id === 2 ? 'Đã hủy' : 'Đang hoạt động',
+          id: t.status?.id ?? StatusEnum.pending,
+          name:
+            t.status?.id === StatusEnum.active ? 'Đang hoạt động' : 'Chờ duyệt',
         },
         photo: avatarPath ? { id: t.photo?.id, path: avatarPath } : null,
         questionsCount: 0,
@@ -588,6 +699,8 @@ export class AnalyticsService {
         totalTeachers,
         activeTeachers,
         growthPercentage,
+        thisMonthTeachers,
+        lastMonthTeachers,
         totalQuestionsContributed,
         totalExamsContributed,
       },

@@ -83,6 +83,42 @@ describe('UsersRelationalRepository student codes', () => {
     expect(transactional.query).not.toHaveBeenCalled();
   });
 
+  it('should not issue a student code when a pending account is rejected', async () => {
+    transactional.findOne.mockResolvedValue({
+      id: 7,
+      username: 'student',
+      email: 'student@example.com',
+      role: { id: 2 },
+      status: { id: 3 },
+      studentCode: null,
+    });
+    const saved = await repository.update(7, { status: { id: 2 } });
+    expect(saved.studentCode).toBeNull();
+    expect(saved.status?.id).toBe(2);
+    expect(transactional.query).not.toHaveBeenCalled();
+  });
+
+  it('should reject an explicit code for an unapproved account', async () => {
+    await expect(
+      repository.create(data({ status: { id: 3 }, studentCode: 20 })),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(transactional.save).not.toHaveBeenCalled();
+  });
+
+  it('should preserve an issued code when an approved account is later disabled', async () => {
+    transactional.findOne.mockResolvedValue({
+      id: 7,
+      username: 'student',
+      email: 'student@example.com',
+      role: { id: 2 },
+      status: { id: 1 },
+      studentCode: 10,
+    });
+    const saved = await repository.update(7, { status: { id: 2 } });
+    expect(saved.studentCode).toBe(10);
+    expect(transactional.query).not.toHaveBeenCalled();
+  });
+
   it('should reject explicit duplicate codes before saving', async () => {
     transactional.findOne.mockResolvedValue({ id: 8, studentCode: 20 });
     await expect(
@@ -178,9 +214,14 @@ describe('UsersRelationalRepository student codes', () => {
 
 describe('UsersRelationalRepository pagination counts', () => {
   it('should count every matching account with the same filters and deleted-account visibility as the page', async () => {
+    const paginationQuery = {
+      setFindOptions: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+      getCount: jest.fn().mockResolvedValue(25),
+    };
     const persistence = {
-      find: jest.fn().mockResolvedValue([]),
-      count: jest.fn().mockResolvedValue(25),
+      createQueryBuilder: jest.fn().mockReturnValue(paginationQuery),
     };
     const repository = new UsersRelationalRepository(
       persistence as unknown as Repository<UserEntity>,
@@ -189,21 +230,22 @@ describe('UsersRelationalRepository pagination counts', () => {
       roles: [{ id: 2 }],
       statuses: [{ id: 1 }, { id: 2 }],
       currentHskLevel: 3,
+      excludeDeleted: true,
     };
     await repository.findManyWithPagination({
       filterOptions,
       paginationOptions: { page: 2, limit: 10 },
     });
     await expect(repository.count(filterOptions)).resolves.toBe(25);
-    const pageOptions = persistence.find.mock.calls[0][0];
-    expect(persistence.count).toHaveBeenCalledWith({
+    const [pageOptions] = paginationQuery.setFindOptions.mock.calls[0];
+    expect(paginationQuery.setFindOptions).toHaveBeenNthCalledWith(2, {
       where: pageOptions.where,
-      withDeleted: true,
+      withDeleted: false,
     });
     expect(pageOptions).toMatchObject({
       skip: 10,
       take: 10,
-      withDeleted: true,
+      withDeleted: false,
     });
   });
 });

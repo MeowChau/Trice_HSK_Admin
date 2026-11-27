@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 import { randomInt } from 'crypto';
+import { studyDate } from '../utils/study-date';
+import { ExamRevenueQueryDto } from './dto/exam-revenue.dto';
 import type { PaymentLink } from '@payos/node';
 import { ExamEntity } from './infrastructure/persistence/relational/entities/exam.entity';
 import { ExamPaymentEntity } from './infrastructure/persistence/relational/entities/exam-payment.entity';
@@ -19,6 +21,165 @@ export class ExamPaymentsService {
     private readonly db: DataSource,
     private readonly payos: PayosService,
   ) {}
+
+  /** Read the confirmed local ledger; opening analytics never calls payOS or mutates orders. */
+  async revenue(query: ExamRevenueQueryDto = {}) {
+    const today = studyDate();
+    const from = query.from || today.slice(0, 7) + '-01';
+    const to = query.to || today;
+    const validDate = (value: string) =>
+      /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+      Number.isFinite(Date.parse(value)) &&
+      new Date(value).toISOString().slice(0, 10) === value;
+    if (!validDate(from) || !validDate(to) || from > to)
+      throw new BadRequestException(
+        'Chọn ngày bắt đầu và kết thúc hợp lệ, ngày bắt đầu không sau ngày kết thúc.',
+      );
+    const days = (Date.parse(to) - Date.parse(from)) / 86400000 + 1;
+    if (days > 366)
+      throw new BadRequestException(
+        'Mỗi lần xem tối đa 366 ngày. Vui lòng thu hẹp khoảng thời gian.',
+      );
+    const start = new Date(`${from}T00:00:00+07:00`).toISOString();
+    const end = new Date(
+      new Date(`${to}T00:00:00+07:00`).getTime() + 86400000,
+    ).toISOString();
+    const term = query.search?.trim();
+    const escapedTerm = term?.replace(
+      /[\\%_]/g,
+      (character) => '\\' + character,
+    );
+    const parameters = [
+      start,
+      end,
+      query.hskLevel || null,
+      escapedTerm ? '%' + escapedTerm + '%' : null,
+    ];
+    // Paid orders belong to the date of confirmation; other orders use their creation date.
+    // One row per payment prevents purchases or question joins from multiplying revenue.
+    const scope = `FROM exam_payment p LEFT JOIN "user" u ON u.id = p."userId"
+      WHERE p.currency = 'VND'
+        AND (CASE WHEN p.status = 'paid' THEN p."paidAt" ELSE p."createdAt" END) >= $1::timestamptz
+        AND (CASE WHEN p.status = 'paid' THEN p."paidAt" ELSE p."createdAt" END) < $2::timestamptz
+        AND ($3::int IS NULL OR p."hskLevel" = $3)
+        AND ($4::text IS NULL OR p."examTitle" ILIKE $4 OR p."orderCode"::text ILIKE $4
+          OR u.email ILIKE $4 OR u.username ILIKE $4 OR u."fullName" ILIKE $4
+          OR concat_ws(' ', u."firstName", u."lastName") ILIKE $4)`;
+    // A consistent snapshot keeps cards, chart and pagination in agreement during webhook updates.
+    return this.db.transaction('REPEATABLE READ', async (manager) => {
+      const [totals]: Array<Record<string, string | number>> =
+        await manager.query(
+          `SELECT
+        COUNT(*)::int AS "totalOrders",
+        COUNT(*) FILTER (WHERE p.status = 'paid')::int AS "paidOrders",
+        COALESCE(SUM(p.amount) FILTER (WHERE p.status = 'paid'), 0)::text AS "totalRevenue",
+        COUNT(DISTINCT p."userId") FILTER (WHERE p.status = 'paid')::int AS "payingCustomers",
+        COUNT(*) FILTER (WHERE p.status IN ('creating','pending'))::int AS "pendingOrders",
+        COALESCE(SUM(p.amount) FILTER (WHERE p.status IN ('creating','pending')), 0)::text AS "pendingAmount",
+        COUNT(*) FILTER (WHERE p.status = 'cancelled')::int AS "cancelledOrders",
+        COUNT(*) FILTER (WHERE p.status = 'expired')::int AS "expiredOrders" ${scope}`,
+          parameters,
+        );
+      const chartRows: Array<{
+        date: string;
+        revenue: string;
+        paidOrders: number;
+      }> = await manager.query(
+        `SELECT
+        to_char(p."paidAt" AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD') AS date,
+        SUM(p.amount)::text AS revenue, COUNT(*)::int AS "paidOrders"
+        ${scope} AND p.status = 'paid' GROUP BY 1 ORDER BY 1`,
+        parameters,
+      );
+      const topExams: Array<{
+        examId: number | null;
+        examTitle: string;
+        hskLevel: number;
+        revenue: string;
+        paidOrders: number;
+      }> = await manager.query(
+        `SELECT
+        p."examId", p."examTitle", p."hskLevel", SUM(p.amount)::text AS revenue, COUNT(*)::int AS "paidOrders"
+        ${scope} AND p.status = 'paid'
+        GROUP BY p."examId", p."examTitle", p."hskLevel"
+        ORDER BY SUM(p.amount) DESC, COUNT(*) DESC, p."examTitle" ASC, p."hskLevel" ASC, p."examId" ASC NULLS LAST LIMIT 5`,
+        parameters,
+      );
+      const listScope = `${scope} AND ($5::text IS NULL OR p.status = $5)`;
+      const listParameters = [...parameters, query.status || null];
+      const [count]: Array<{ total: number }> = await manager.query(
+        `SELECT COUNT(*)::int AS total ${listScope}`,
+        listParameters,
+      );
+      const total = Number(count.total);
+      const limit = Math.max(1, Math.min(100, Math.trunc(query.limit || 20)));
+      const totalPages = Math.ceil(total / limit);
+      const page = Math.max(
+        1,
+        Math.min(Math.trunc(query.page || 1), Math.max(1, totalPages)),
+      );
+      const transactions: Array<{
+        id: string;
+        orderCode: string;
+        userId: number;
+        buyerName: string;
+        buyerEmail: string | null;
+        examId: number | null;
+        examTitle: string;
+        hskLevel: number;
+        amount: number;
+        status: string;
+        createdAt: Date;
+        paidAt: Date | null;
+        expiresAt: Date;
+        eventAt: Date;
+      }> = await manager.query(
+        `SELECT p.id, p."orderCode"::text AS "orderCode", p."userId",
+        COALESCE(NULLIF(u."fullName", ''), NULLIF(trim(concat_ws(' ', u."firstName", u."lastName")), ''), u.username, 'Học viên') AS "buyerName",
+        u.email AS "buyerEmail", p."examId", p."examTitle", p."hskLevel", p.amount, p.status,
+        p."createdAt", p."paidAt", p."expiresAt",
+        CASE WHEN p.status = 'paid' THEN p."paidAt" ELSE p."createdAt" END AS "eventAt"
+        ${listScope} ORDER BY "eventAt" DESC, p.id DESC LIMIT $6 OFFSET $7`,
+        [...listParameters, limit, (page - 1) * limit],
+      );
+      const summary = Object.fromEntries(
+        Object.entries(totals).map(([key, value]) => [key, Number(value)]),
+      );
+      const byDate = new Map(chartRows.map((row) => [row.date, row]));
+      const chart = Array.from({ length: days }, (_, index) => {
+        const date = new Date(Date.parse(from) + index * 86400000)
+          .toISOString()
+          .slice(0, 10);
+        const row = byDate.get(date);
+        return {
+          date,
+          revenue: Number(row?.revenue || 0),
+          paidOrders: Number(row?.paidOrders || 0),
+        };
+      });
+      return {
+        period: { from, to, timeZone: 'Asia/Ho_Chi_Minh' },
+        currency: 'VND',
+        summary: {
+          ...summary,
+          averageOrderValue: summary.paidOrders
+            ? Math.round(summary.totalRevenue / summary.paidOrders)
+            : 0,
+        },
+        chart,
+        topExams: topExams.map((row) => ({
+          ...row,
+          revenue: Number(row.revenue),
+        })),
+        transactions,
+        total,
+        page,
+        limit,
+        totalPages,
+        generatedAt: new Date().toISOString(),
+      };
+    });
+  }
 
   private view(order: ExamPaymentEntity) {
     return {

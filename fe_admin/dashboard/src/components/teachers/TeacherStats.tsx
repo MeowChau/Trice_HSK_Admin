@@ -34,7 +34,9 @@ interface TeacherStatsData {
   overview: {
     totalTeachers: number;
     activeTeachers: number;
-    growthPercentage: number;
+    growthPercentage: number | null;
+    thisMonthTeachers: number;
+    lastMonthTeachers: number;
     totalQuestionsContributed: number;
     totalExamsContributed: number;
   };
@@ -91,6 +93,7 @@ export default function TeacherStats() {
   const [sortBy, setSortBy] = useState<
     "questions_desc" | "exams_desc" | "name_asc"
   >("questions_desc");
+  const growthPercentage = stats?.overview.growthPercentage ?? null;
 
   const fetchStats = useCallback(async () => {
     const request = requests.start();
@@ -438,24 +441,47 @@ export default function TeacherStats() {
               người
             </span>
           </div>
-          <div className="mt-2.5 flex items-center gap-1.5">
-            <span
-              className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                (stats?.overview?.growthPercentage ?? 0) >= 0
-                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
-                  : "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"
-              }`}
-            >
-              {(stats?.overview?.growthPercentage ?? 0) >= 0 ? (
-                <ArrowUpIcon className="h-3 w-3" />
-              ) : (
-                <ArrowDownIcon className="h-3 w-3" />
-              )}
-              {stats?.overview?.growthPercentage ?? 0}%
-            </span>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              so với tháng trước
-            </span>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Đang hoạt động hoặc chờ duyệt; không gồm đã xóa/hủy.
+          </p>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Mới tháng này: {stats?.overview.thisMonthTeachers ?? "—"} · Tháng
+            trước: {stats?.overview.lastMonthTeachers ?? "—"}
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
+            {isLoading || !stats ? (
+              <span className="text-gray-500 dark:text-gray-400">—</span>
+            ) : growthPercentage === null ? (
+              <span className="text-gray-500 dark:text-gray-400">
+                Chưa thể tính tỷ lệ: tháng trước không có giảng viên mới.
+              </span>
+            ) : (
+              <>
+                <span
+                  className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    growthPercentage > 0
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                      : growthPercentage < 0
+                        ? "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"
+                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                  }`}
+                >
+                  {growthPercentage > 0 ? (
+                    <ArrowUpIcon className="h-3 w-3" />
+                  ) : growthPercentage < 0 ? (
+                    <ArrowDownIcon className="h-3 w-3" />
+                  ) : null}
+                  {growthPercentage > 0 ? "+" : ""}
+                  {growthPercentage.toLocaleString("vi-VN", {
+                    maximumFractionDigits: 1,
+                  })}
+                  %
+                </span>
+                <span className="text-gray-500 dark:text-gray-400">
+                  giảng viên mới so với tháng trước
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -777,7 +803,7 @@ export default function TeacherStats() {
             >
               <option value="">Tất cả trạng thái</option>
               <option value="1">Đang hoạt động</option>
-              <option value="2">Đã hủy</option>
+              <option value="3">Chờ duyệt</option>
             </select>
 
             {/* Sort */}
@@ -966,7 +992,7 @@ export default function TeacherStats() {
                     <TableCell className="min-w-[130px] px-4 py-3.5 text-center">
                       <Badge
                         size="sm"
-                        color={teacher.status.id === 1 ? "success" : "error"}
+                        color={teacher.status.id === 1 ? "success" : "warning"}
                       >
                         {teacher.status.name}
                       </Badge>

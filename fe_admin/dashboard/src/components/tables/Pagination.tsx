@@ -2,12 +2,18 @@
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  disabled?: boolean;
+  previousLabel?: string;
+  nextLabel?: string;
 };
 
 export default function Pagination({
   currentPage,
   totalPages,
   onPageChange,
+  disabled = false,
+  previousLabel = "Trước",
+  nextLabel = "Sau",
 }: PaginationProps) {
   const pageCount = Math.max(1, totalPages);
   const windowSize = Math.min(3, pageCount);
@@ -27,11 +33,11 @@ export default function Pagination({
       <button
         type="button"
         aria-label="Trang trước"
-        disabled={currentPage <= 1}
+        disabled={disabled || currentPage <= 1}
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         className={controlClass}
       >
-        Trước
+        {previousLabel}
       </button>
       {startPage > 1 && (
         <span
@@ -46,6 +52,7 @@ export default function Pagination({
           type="button"
           key={page}
           aria-label={"Trang " + page}
+          disabled={disabled}
           aria-current={page === currentPage ? "page" : undefined}
           onClick={() => onPageChange(page)}
           className={
@@ -69,11 +76,11 @@ export default function Pagination({
       <button
         type="button"
         aria-label="Trang sau"
-        disabled={currentPage >= pageCount}
+        disabled={disabled || currentPage >= pageCount}
         onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}
         className={controlClass}
       >
-        Sau
+        {nextLabel}
       </button>
     </nav>
   );

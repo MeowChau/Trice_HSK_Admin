@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { AuditLogEntity } from './infrastructure/persistence/relational/entities/audit-log.entity';
+import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
+import { getStatusLabel, StatusEnum } from '../statuses/statuses.enum';
 
 @Injectable()
 export class AuditLogsService {
@@ -69,8 +71,16 @@ export class AuditLogsService {
 
     if (params?.search && params.search.trim()) {
       const term = `%${params.search.trim().toLowerCase()}%`;
+      query
+        .withDeleted()
+        .leftJoin(
+          UserEntity,
+          'student',
+          'log.entityType = :studentEntityType AND log.entityId = CAST(student.id AS text)',
+          { studentEntityType: 'STUDENT' },
+        );
       query.andWhere(
-        '(LOWER(log.summary) LIKE :term OR LOWER(log.userName) LIKE :term OR LOWER(log.userEmail) LIKE :term OR log.entityId LIKE :term)',
+        "(LOWER(log.summary) LIKE :term OR LOWER(log.userName) LIKE :term OR LOWER(log.userEmail) LIKE :term OR log.entityId LIKE :term OR ('#' || CAST(student.studentCode AS text)) LIKE :term)",
         { term },
       );
     }
@@ -89,18 +99,96 @@ export class AuditLogsService {
       query.andWhere('log.userId = :userId', { userId: params.userId });
     }
 
-    query.orderBy('log.createdAt', 'DESC');
+    query.orderBy('log.createdAt', 'DESC').addOrderBy('log.id', 'DESC');
     query.skip(skip).take(limit);
 
     const [items, total] = await query.getManyAndCount();
 
+    // entityId identifies the account; the student code is its public identifier.
+    // Resolve one page in a single query, including accounts that were soft-deleted.
+    const studentIds = [
+      ...new Set(
+        items
+          .filter((item) => item.entityType === 'STUDENT')
+          .map((item) => Number(item.entityId))
+          .filter((id) => Number.isInteger(id) && id > 0 && id <= 2147483647),
+      ),
+    ];
+    const students = studentIds.length
+      ? await this.auditLogRepository.manager.getRepository(UserEntity).find({
+          select: { id: true, studentCode: true },
+          where: { id: In(studentIds) },
+          withDeleted: true,
+          loadEagerRelations: false,
+        })
+      : [];
+    const studentCodes = new Map(
+      students.map((student) => [student.id, student.studentCode]),
+    );
+    const data = items.map((item) => {
+      const summary = this.getStatusChangeSummary(item);
+      const log = summary === item.summary ? item : { ...item, summary };
+      return item.entityType === 'STUDENT'
+        ? {
+            ...log,
+            studentCode: studentCodes.get(Number(item.entityId)) ?? null,
+          }
+        : log;
+    });
+
     return {
-      data: items,
+      data,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  private getStatusChangeSummary(log: AuditLogEntity): string {
+    const missingStatus = /thành\s+undefined\s*$/u;
+    if (log.action !== 'STATUS_CHANGE' || !missingStatus.test(log.summary)) {
+      return log.summary;
+    }
+
+    const storedStatus = log.newData?.status;
+    const statusRecord =
+      storedStatus &&
+      typeof storedStatus === 'object' &&
+      !Array.isArray(storedStatus)
+        ? (storedStatus as Record<string, unknown>)
+        : null;
+    const statusId =
+      log.newData?.statusId ??
+      statusRecord?.id ??
+      (typeof storedStatus === 'number' ? storedStatus : undefined);
+    let label = getStatusLabel(statusId);
+    if (label === 'Không xác định') {
+      const storedName =
+        typeof storedStatus === 'string' ? storedStatus : statusRecord?.name;
+      const legacyLabels: Record<string, string> = {
+        Active: getStatusLabel(StatusEnum.active),
+        Pending: getStatusLabel(StatusEnum.pending),
+        Inactive: 'Không hoạt động (nhật ký cũ chưa lưu mã trạng thái)',
+        'Đã duyệt': getStatusLabel(StatusEnum.active),
+        'Đã hủy': getStatusLabel(StatusEnum.inactive),
+        'Đã khóa': 'Đã khóa',
+        'Chờ duyệt': getStatusLabel(StatusEnum.pending),
+      };
+      if (
+        typeof storedName === 'string' &&
+        Object.prototype.hasOwnProperty.call(legacyLabels, storedName)
+      ) {
+        label = legacyLabels[storedName];
+      }
+    }
+
+    return log.summary.replace(
+      missingStatus,
+      label === 'Không xác định'
+        ? '— chưa xác định trạng thái mới (nhật ký cũ thiếu dữ liệu)'
+        : `thành ${label}`,
+    );
   }
 
   async getSummaryStats() {

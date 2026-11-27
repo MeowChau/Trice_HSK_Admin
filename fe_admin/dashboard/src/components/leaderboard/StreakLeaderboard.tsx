@@ -25,7 +25,6 @@ interface StudentStreakItem {
   avatarFrame: string | null;
   level: number;
   currentExp: number;
-  targetHskLevel: number | null;
   currentHskLevel: number | null;
   photo: { id: string; path: string } | null;
   currentStreak: number;
@@ -129,7 +128,7 @@ export default function StreakLeaderboard() {
     if (!level) {
       return (
         <span className="inline-flex items-center rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-          Chưa đặt
+          Chưa xác định
         </span>
       );
     }
@@ -167,6 +166,12 @@ export default function StreakLeaderboard() {
 
     let list = [...data.leaderboard];
 
+    if (selectedHskLevel) {
+      list = list.filter(
+        (item) => item.currentHskLevel === Number(selectedHskLevel),
+      );
+    }
+
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       list = list.filter(
@@ -201,12 +206,20 @@ export default function StreakLeaderboard() {
     });
 
     return list;
-  }, [data?.leaderboard, searchTerm, sortBy]);
+  }, [data?.leaderboard, searchTerm, selectedHskLevel, sortBy]);
 
-  // Top 3 for podium
-  const top1 = filteredLeaderboard[0];
-  const top2 = filteredLeaderboard[1];
-  const top3 = filteredLeaderboard[2];
+  // The podium always honours ongoing streaks, independently of table sorting.
+  const podium = filteredLeaderboard
+    .filter((student) => student.currentStreak > 0)
+    .sort(
+      (a, b) =>
+        b.currentStreak - a.currentStreak ||
+        b.longestStreak - a.longestStreak ||
+        b.totalDays - a.totalDays ||
+        Number(a.id) - Number(b.id),
+    )
+    .slice(0, 3);
+  const [top1, top2, top3] = podium;
 
   return (
     <div className="space-y-6">
@@ -380,7 +393,7 @@ export default function StreakLeaderboard() {
       </div>
 
       {/* 2. TOP 3 PODIUM (BỤC VINH DANH) */}
-      {filteredLeaderboard.length >= 3 && (
+      {podium.length > 0 && (
         <div
           role="region"
           aria-label="Bục vinh danh"
@@ -391,11 +404,17 @@ export default function StreakLeaderboard() {
               🏆 BỤC VINH DANH QUÁN QUÂN
             </span>
             <h2 className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
-              Top 3 Kỷ luật & Chuyên cần nhất
+              Top {podium.length} học viên đang duy trì chuỗi học
             </h2>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              Xếp theo chuỗi hiện tại; chỉ vinh danh học viên có chuỗi lớn hơn 0
+              ngày.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end max-w-4xl mx-auto pt-4 pb-2">
+          <div
+            className={`grid grid-cols-1 gap-6 items-end mx-auto pt-4 pb-2 ${podium.length === 1 ? "max-w-sm" : podium.length === 2 ? "max-w-2xl md:grid-cols-2" : "max-w-4xl md:grid-cols-3"}`}
+          >
             {/* HẠNG 2: SILVER */}
             {top2 && (
               <div className="order-2 md:order-1 flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-slate-700/60 dark:bg-gray-850">
@@ -432,7 +451,7 @@ export default function StreakLeaderboard() {
                   {top2.studentCode ? `MSV: #${top2.studentCode}` : top2.email}
                 </span>
 
-                <div className="mt-2">{getHskBadge(top2.targetHskLevel)}</div>
+                <div className="mt-2">{getHskBadge(top2.currentHskLevel)}</div>
 
                 <div className="mt-3 flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-sm font-bold text-orange-600 dark:bg-orange-950/30 dark:text-orange-400">
                   <span>🔥</span>
@@ -483,7 +502,9 @@ export default function StreakLeaderboard() {
                   {top1.studentCode ? `MSV: #${top1.studentCode}` : top1.email}
                 </span>
 
-                <div className="mt-2.5">{getHskBadge(top1.targetHskLevel)}</div>
+                <div className="mt-2.5">
+                  {getHskBadge(top1.currentHskLevel)}
+                </div>
 
                 <div className="mt-3.5 flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-1.5 text-base font-extrabold text-white shadow-md">
                   <span>🔥</span>
@@ -533,7 +554,7 @@ export default function StreakLeaderboard() {
                   {top3.studentCode ? `MSV: #${top3.studentCode}` : top3.email}
                 </span>
 
-                <div className="mt-2">{getHskBadge(top3.targetHskLevel)}</div>
+                <div className="mt-2">{getHskBadge(top3.currentHskLevel)}</div>
 
                 <div className="mt-3 flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-sm font-bold text-orange-600 dark:bg-orange-950/30 dark:text-orange-400">
                   <span>🔥</span>
@@ -546,6 +567,16 @@ export default function StreakLeaderboard() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {!isLoading && !fetchError && podium.length === 0 && (
+        <div
+          role="status"
+          className="rounded-2xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400"
+        >
+          Chưa có học viên có chuỗi hiện tại lớn hơn 0 ngày trong danh sách này
+          để vinh danh.
         </div>
       )}
 
@@ -575,22 +606,18 @@ export default function StreakLeaderboard() {
               />
             </div>
 
-            {/* Filter Cấp độ mục tiêu: HSK 1 đến HSK 9 */}
+            {/* Filter by current HSK level, matching the account list. */}
             <select
               value={selectedHskLevel}
               onChange={(e) => setSelectedHskLevel(e.target.value)}
               className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-theme-sm text-gray-700 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 font-medium"
             >
-              <option value="">Cấp độ mục tiêu: HSK 1 - 9</option>
-              <option value="1">Cấp độ mục tiêu: HSK 1</option>
-              <option value="2">Cấp độ mục tiêu: HSK 2</option>
-              <option value="3">Cấp độ mục tiêu: HSK 3</option>
-              <option value="4">Cấp độ mục tiêu: HSK 4</option>
-              <option value="5">Cấp độ mục tiêu: HSK 5</option>
-              <option value="6">Cấp độ mục tiêu: HSK 6</option>
-              <option value="7">Cấp độ mục tiêu: HSK 7</option>
-              <option value="8">Cấp độ mục tiêu: HSK 8</option>
-              <option value="9">Cấp độ mục tiêu: HSK 9</option>
+              <option value="">HSK hiện tại: Tất cả cấp độ</option>
+              {Array.from({ length: 9 }, (_, index) => (
+                <option key={index + 1} value={index + 1}>
+                  HSK hiện tại: HSK {index + 1}
+                </option>
+              ))}
             </select>
 
             {/* Timeframe Filter */}
@@ -654,7 +681,7 @@ export default function StreakLeaderboard() {
                   isHeader
                   className="min-w-[130px] px-4 py-3.5 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
-                  Mục tiêu HSK
+                  HSK hiện tại
                 </TableCell>
                 <TableCell
                   isHeader
@@ -774,9 +801,9 @@ export default function StreakLeaderboard() {
                       </div>
                     </TableCell>
 
-                    {/* Mục tiêu HSK (1-9) */}
+                    {/* Current HSK level (1-9). */}
                     <TableCell className="min-w-[130px] px-4 py-3.5 text-center">
-                      {getHskBadge(student.targetHskLevel)}
+                      {getHskBadge(student.currentHskLevel)}
                     </TableCell>
 
                     {/* Cấp độ / Level */}

@@ -54,6 +54,12 @@ export interface ExamItem {
   updatedAt: string;
 }
 
+interface ExamStatistics {
+  primary: number;
+  intermediate: number;
+  advanced: number;
+}
+
 export default function ExamList() {
   const requests = useLatestRequest();
   const [exams, setExams] = useState<ExamItem[]>([]);
@@ -65,6 +71,7 @@ export default function ExamList() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [statistics, setStatistics] = useState<ExamStatistics | null>(null);
   const limit = 10;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -94,21 +101,40 @@ export default function ExamList() {
           url += `&hskLevel=${selectedHsk}`;
         }
 
-        const res = await apiFetch(url, { signal: request.signal });
+        const res = await apiFetch(url, {
+          signal: request.signal,
+          cache: "no-store",
+        });
         if (!res.ok) {
           throw new Error(await readApiError(res));
         }
 
         const result = await res.json();
         if (!request.isCurrent()) return;
+        const summary = result.statistics as ExamStatistics | undefined;
+        if (
+          !summary ||
+          !Number.isSafeInteger(result.total) ||
+          ![summary.primary, summary.intermediate, summary.advanced].every(
+            (count) => Number.isSafeInteger(count) && count >= 0,
+          ) ||
+          summary.primary + summary.intermediate + summary.advanced !==
+            result.total
+        ) {
+          throw new Error(
+            "Chưa tải được thống kê đầy đủ của danh sách đề thi. Vui lòng thử lại.",
+          );
+        }
         setPage(currentPage);
         setExams(result.data || []);
         setTotalPages(result.totalPages || 1);
         setTotalItems(result.total || 0);
+        setStatistics(summary);
       } catch (err) {
         if (!request.isCurrent()) return;
         setErrorMsg(errorMessage(err, "") || "Không thể tải danh sách đề thi.");
         setExams([]);
+        setStatistics(null);
       } finally {
         if (request.isCurrent()) {
           setIsLoading(false);
@@ -163,7 +189,10 @@ export default function ExamList() {
             ...section,
             sectionQuestions: [...(section.sectionQuestions ?? [])]
               .sort((left, right) => left.order - right.order)
-              .map((question) => ({ ...question, displayNumber: questionNumber++ })),
+              .map((question) => ({
+                ...question,
+                displayNumber: questionNumber++,
+              })),
           })),
       });
       setActiveSectionTab(0);
@@ -193,13 +222,6 @@ export default function ExamList() {
       setIsDeleting(false);
     }
   };
-
-  // Calculated Stats
-  const primaryExamsCount = exams.filter((e) => e.hskLevel <= 2).length;
-  const intermediateExamsCount = exams.filter(
-    (e) => e.hskLevel >= 3 && e.hskLevel <= 4,
-  ).length;
-  const advancedExamsCount = exams.filter((e) => e.hskLevel >= 5).length;
 
   return (
     <div className="space-y-6">
@@ -248,7 +270,7 @@ export default function ExamList() {
           </div>
           <div className="mt-4 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              {totalItems.toLocaleString()}
+              {statistics ? totalItems.toLocaleString() : "—"}
             </span>
             <Badge variant="light" color="primary" size="sm">
               HSK 1 - 9
@@ -268,7 +290,7 @@ export default function ExamList() {
           </div>
           <div className="mt-4 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              {primaryExamsCount.toLocaleString()}
+              {statistics ? statistics.primary.toLocaleString() : "—"}
             </span>
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
               Khởi động
@@ -288,7 +310,7 @@ export default function ExamList() {
           </div>
           <div className="mt-4 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              {intermediateExamsCount.toLocaleString()}
+              {statistics ? statistics.intermediate.toLocaleString() : "—"}
             </span>
             <span className="text-xs text-sky-600 dark:text-sky-400 font-medium">
               Tiêu chuẩn
@@ -308,7 +330,7 @@ export default function ExamList() {
           </div>
           <div className="mt-4 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              {advancedExamsCount.toLocaleString()}
+              {statistics ? statistics.advanced.toLocaleString() : "—"}
             </span>
             <Badge variant="light" color="warning" size="sm">
               Chuyên sâu

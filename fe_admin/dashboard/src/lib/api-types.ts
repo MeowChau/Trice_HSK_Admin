@@ -1,4 +1,6 @@
 export interface UserFilters {
+  excludeDeleted?: boolean;
+  onlyDeleted?: boolean;
   roles?: { id: number }[];
   statuses?: { id: number }[];
   currentHskLevel?: number;

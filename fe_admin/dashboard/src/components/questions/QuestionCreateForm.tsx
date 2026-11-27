@@ -9,6 +9,7 @@ import {
   buildQuestionInput,
   draftFromQuestion,
   preparationIssues,
+  questionContentErrors,
   QUESTION_TEMPLATES,
   templateFor,
   validateDraft,
@@ -157,16 +158,22 @@ export default function QuestionCreateForm({
   const [error, setError] = useState("");
   const [duration, setDuration] = useState(0);
   const template = templateFor(draft.templateId);
+  const contentErrors = questionContentErrors(draft);
   const edit = <K extends keyof QuestionDraft>(
     key: K,
     value: QuestionDraft[K],
-  ) => setDraft((current) => ({ ...current, [key]: value }));
+  ) => {
+    setError("");
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
   const chooseTemplate = (id: string) => {
     const next = templateFor(id);
+    setError("");
     setDraft((current) => ({
       ...current,
       templateId: id,
       answer: "",
+      reviewConfirmed: false,
       choices: Array.from({ length: next.choices ?? 0 }, (_, i) => ({
         text: next.type === "TRUE_FALSE" ? (i === 0 ? "Đúng" : "Sai") : "",
         imageUrl: "",
@@ -189,6 +196,7 @@ export default function QuestionCreateForm({
     | undefined;
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     setError("");
     const validation = validateDraft(draft, duration);
     if (validation) {
@@ -457,6 +465,15 @@ export default function QuestionCreateForm({
               Nếu ảnh đề đã có sẵn A/B/C…, chỉ cần giữ đúng số phương án và chọn
               đáp án bên dưới.
             </p>
+            {contentErrors.choices && (
+              <p
+                id="question-choices-error"
+                role="alert"
+                className="text-sm text-error-500"
+              >
+                {contentErrors.choices}
+              </p>
+            )}
             {draft.choices.map((choice, index) => (
               <div
                 key={index}
@@ -468,6 +485,11 @@ export default function QuestionCreateForm({
                   </span>
                   <input
                     aria-label={`Nội dung phương án ${String.fromCharCode(65 + index)}`}
+                    aria-describedby={
+                      contentErrors.choices
+                        ? "question-choices-error"
+                        : undefined
+                    }
                     className={field}
                     value={choice.text}
                     placeholder="Chữ trong phương án (có thể để trống khi dùng ảnh)"
@@ -527,6 +549,11 @@ export default function QuestionCreateForm({
             <label className="block space-y-1.5 text-sm">
               Đáp án đúng
               <select
+                id="question-answer"
+                aria-invalid={Boolean(contentErrors.answer) || undefined}
+                aria-describedby={
+                  contentErrors.answer ? "question-answer-error" : undefined
+                }
                 className={field}
                 value={draft.answer}
                 onChange={(event) => edit("answer", event.target.value)}
@@ -550,6 +577,11 @@ export default function QuestionCreateForm({
                 ? "Hướng dẫn / tiêu chí để giảng viên chấm"
                 : "Đáp án mẫu"}
               <textarea
+                id="question-answer"
+                aria-invalid={Boolean(contentErrors.answer) || undefined}
+                aria-describedby={
+                  contentErrors.answer ? "question-answer-error" : undefined
+                }
                 className={field}
                 rows={3}
                 value={draft.answer}
@@ -561,6 +593,15 @@ export default function QuestionCreateForm({
                 }
               />
             </label>
+          )}
+          {contentErrors.answer && (
+            <p
+              id="question-answer-error"
+              role="alert"
+              className="text-sm text-error-500"
+            >
+              {contentErrors.answer}
+            </p>
           )}
           <label className="block space-y-1.5 text-sm">
             Giải thích đáp án

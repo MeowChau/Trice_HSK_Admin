@@ -22,6 +22,8 @@ export default function QuestionPreview({
     start?: number;
     end?: number;
   } | null;
+  const sharedAudio =
+    payload.sharedAudio === true && !stamp?.start && stamp?.end === undefined;
   const source = payload.source as
     | {
         lessonTitle?: string;
@@ -54,11 +56,22 @@ export default function QuestionPreview({
         {String(payload.text ?? "")}
       </p>
       {typeof payload.audioUrl === "string" && payload.audioUrl && (
-        <AudioClipPlayer
-          url={payload.audioUrl}
-          start={stamp?.start}
-          end={stamp?.end}
-        />
+        <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+          <p className="text-sm font-medium text-brand-600 dark:text-brand-400">
+            {sharedAudio ? "Audio dùng chung toàn bài" : "Audio đính kèm"}
+          </p>
+          {sharedAudio && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              File chứa phần nghe của toàn bài, không phải audio riêng của câu
+              này. Thời lượng trên trình phát là thời lượng toàn bộ file.
+            </p>
+          )}
+          <AudioClipPlayer
+            url={payload.audioUrl}
+            start={stamp?.start}
+            end={stamp?.end}
+          />
+        </div>
       )}
       {question.skill === "LISTENING" && !payload.audioUrl && (
         <p className="rounded-lg bg-sky-50 p-3 text-sm text-sky-800 dark:bg-sky-900/20 dark:text-sky-200">

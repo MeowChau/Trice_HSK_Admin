@@ -10,6 +10,7 @@ import {
   FolderIcon,
   ChevronDownIcon,
   GridIcon,
+  DollarLineIcon,
   HorizontaLDots,
   ListIcon,
   PageIcon,
@@ -80,6 +81,11 @@ const navItems: NavItem[] = [
       { name: "Đề thi", path: "/leaderboard/exam", pro: false },
       { name: "Game online", path: "/leaderboard/game", pro: false },
     ],
+  },
+  {
+    icon: <DollarLineIcon />,
+    name: "Doanh thu",
+    path: "/revenue",
   },
   {
     name: "Truy vết chỉnh sửa",

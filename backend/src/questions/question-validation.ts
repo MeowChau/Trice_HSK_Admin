@@ -133,6 +133,23 @@ export function validateAuthoredQuestion(question: AuthoredQuestion): void {
     )
       invalid('Ảnh phương án không khớp danh sách phương án.');
     const optionImages = Array.isArray(images) ? images : [];
+    const seen = new Map<string, number>();
+    for (const [index, option] of options.entries()) {
+      const text = String(option)
+        .normalize('NFKC')
+        .trim()
+        .replace(/\s+/gu, ' ')
+        .toLowerCase();
+      const image = String(optionImages[index] ?? '').trim();
+      if (!text && !image) continue;
+      const key = JSON.stringify([text, image]);
+      const previous = seen.get(key);
+      if (previous !== undefined)
+        invalid(
+          `Phương án ${String.fromCharCode(65 + previous)} và ${String.fromCharCode(65 + index)} trùng nội dung. Hãy nhập các phương án khác nhau.`,
+        );
+      seen.set(key, index);
+    }
     if (
       options.some(
         (value, index) => !String(value).trim() && !optionImages[index],
@@ -173,6 +190,20 @@ export function validateAuthoredQuestion(question: AuthoredQuestion): void {
       (typeof value !== 'string' || value.length > 8000)
     )
       invalid('Đáp án hoặc hướng dẫn chấm không hợp lệ.');
+  }
+  if (payload.reviewRequired !== true) {
+    const manual =
+      payload.manualGrading === true ||
+      question.type === QuestionTypeEnum.ESSAY;
+    const answer = question.correctAnswer?.[manual ? 'rubric' : 'answer'];
+    if (typeof answer !== 'string' || !answer.trim())
+      invalid(
+        manual
+          ? 'Cần nhập hướng dẫn chấm trước khi xác nhận đã đối chiếu.'
+          : choiceType
+            ? 'Cần chọn đáp án đúng trước khi xác nhận đã đối chiếu.'
+            : 'Cần nhập đáp án mẫu trước khi xác nhận đã đối chiếu.',
+      );
   }
 }
 
