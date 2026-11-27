@@ -29,8 +29,8 @@ before(async () => {
   const users = db.getRepository('UserEntity');
   studentId = (await users.save(users.create({ email: 'student@example.test', username: 'student', role: { id: 2 }, status: { id: 1 } }))).id;
   const now = new Date();
-  for (const [index, month, deleted] of [[0, 0, false], [1, 0, true], [2, -1, false]]) {
-    await users.save(users.create({ email: `teacher${index}@example.test`, username: `teacher${index}`, fullName: `Teacher ${index}`, role: { id: 3 }, status: { id: 1 }, createdAt: new Date(now.getFullYear(), now.getMonth() + month, 10), deletedAt: deleted ? now : null, position: index === 2 ? 'Bậc 2' : 'Bậc 1' }));
+  for (const [index, month, status, deleted] of [[0, 0, 1, false], [1, 0, 1, true], [2, -1, 1, false], [3, 0, 3, false], [4, 0, 2, false]]) {
+    await users.save(users.create({ email: `teacher${index}@example.test`, username: `teacher${index}`, fullName: `Teacher ${index}`, role: { id: 3 }, status: { id: status }, createdAt: new Date(now.getFullYear(), now.getMonth() + month, 10), deletedAt: deleted ? now : null, position: index === 2 ? 'Bậc 2' : 'Bậc 1' }));
   }
   const questionRepo = db.getRepository('QuestionEntity');
   const saved = [];
@@ -72,7 +72,7 @@ test('question summary counts active questions, HSK levels, skills and game ques
   assert.equal(result.hskLevelsCount[1], 2); assert.equal(result.hskLevelsCount[2], 1); assert.equal(result.hskLevelsCount[9], 0);
   assert.equal(queries.length, 1);
 });
-test('teacher metrics retain archived-teacher semantics and six monthly buckets with four queries', async () => {
+test('teacher metrics include active and pending teachers and use four queries for six monthly buckets', async () => {
   queries.length = 0;
   const result = await analytics.getTeacherStats();
   assert.equal(result.overview.totalTeachers, 3); assert.equal(result.overview.activeTeachers, 2);
@@ -81,7 +81,7 @@ test('teacher metrics retain archived-teacher semantics and six monthly buckets 
   assert.deepEqual(result.productivityTimeline.questionsSeries, [0, 0, 0, 0, 1, 1]);
   assert.deepEqual(result.productivityTimeline.examsSeries, [0, 0, 0, 0, 2, 1]);
   assert.deepEqual(result.skillsAndLevels.skills.counts, [1, 1, 1, 0]);
-  assert.equal(result.leaderboard.length, 3);
+  assert.deepEqual(result.leaderboard.map(teacher => teacher.fullName).sort(), ['Teacher 0', 'Teacher 2', 'Teacher 3']);
   assert.equal(queries.length, 4);
 });
 test('study dashboard aggregates time, attendance, activity and vocabulary in six bounded queries', async () => {
