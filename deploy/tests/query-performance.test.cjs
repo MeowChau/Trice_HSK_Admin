@@ -4,6 +4,12 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const root = path.resolve(__dirname, '../..');
+
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+if (!testDatabaseUrl) throw new Error('TEST_DATABASE_URL required.');
+// Loading the compiled analytics service validates the app's database config.
+process.env.DATABASE_URL = testDatabaseUrl;
+
 require(path.join(root, 'backend/node_modules/reflect-metadata'));
 const { DataSource } = require(path.join(root, 'backend/node_modules/typeorm'));
 const { AnalyticsService } = require(path.join(root, 'backend/dist/analytics/analytics.service.js'));
@@ -18,10 +24,9 @@ let admin, db, analytics, questions, exams, studentId, examId;
 const day = offset => studyDate(new Date(Date.now() - offset * 86400000));
 
 before(async () => {
-  if (!process.env.TEST_DATABASE_URL) throw Error('TEST_DATABASE_URL required.');
-  admin = new DataSource({ type: 'postgres', url: process.env.TEST_DATABASE_URL, logging: false });
+  admin = new DataSource({ type: 'postgres', url: testDatabaseUrl, logging: false });
   await admin.initialize(); await admin.query(`CREATE DATABASE "${name}" TEMPLATE template0`);
-  const url = new URL(process.env.TEST_DATABASE_URL); url.pathname = '/' + name;
+  const url = new URL(testDatabaseUrl); url.pathname = '/' + name;
   db = new DataSource({ type: 'postgres', url: url.toString(), logging: ['query'], logger, synchronize: false, entities: [path.join(root, 'backend/dist/**/*.entity.js')], migrations: [path.join(root, 'backend/dist/database/migrations/*.js')] });
   await db.initialize(); await db.runMigrations({ transaction: 'all' });
   await db.query("INSERT INTO role(id,name) VALUES (1,'Admin'),(2,'Student'),(3,'Teacher') ON CONFLICT DO NOTHING");
