@@ -1,27 +1,37 @@
 import type { NextConfig } from "next";
 
+const svgLoader = {
+  loader: "@svgr/webpack",
+  options: {
+    svgoConfig: {
+      // Icons keep their intrinsic size and scale when CSS sets a different size.
+      plugins: [
+        { name: "preset-default", params: { overrides: { removeViewBox: false } } },
+        "prefixIds",
+      ],
+    },
+  },
+};
+
 const nextConfig: NextConfig = {
   output: "standalone",
-  /* config options here */
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
-      use: ["@svgr/webpack"],
+      use: [svgLoader],
     });
     return config;
   },
-    
-    turbopack: {
-      // Keep module resolution inside this independently installed admin app.
-      root: __dirname,
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  turbopack: {
+    // Keep module resolution inside this independently installed admin app.
+    root: __dirname,
+    rules: {
+      "*.svg": {
+        loaders: [svgLoader],
+        as: "*.js",
       },
     },
-  
+  },
 };
 
 export default nextConfig;
