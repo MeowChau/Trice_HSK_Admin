@@ -329,84 +329,88 @@ export default function AuditLogsTable() {
       )}
 
       {/* 1. KPI CARDS */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        role="group"
+        aria-label="Thống kê nhật ký"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
         {/* Card 1: Tổng số thao tác */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between">
+        <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex min-h-12 items-center justify-between gap-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Tổng số thao tác
             </span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
               <DocsIcon className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <div className="mt-3 flex h-10 items-center gap-2">
+            <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
               {isLoading ? "..." : summary?.totalLogs || 0}
             </span>
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
               bản ghi
             </span>
           </div>
-          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-2 min-h-8 text-xs text-gray-500 dark:text-gray-400">
             Được lưu vết bảo mật trong cơ sở dữ liệu
           </div>
         </div>
 
         {/* Card 2: Thao tác hôm nay */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between">
+        <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex min-h-12 items-center justify-between gap-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Hôm nay
             </span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
               <CheckCircleIcon className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <div className="mt-3 flex h-10 items-center gap-2">
+            <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
               {isLoading ? "..." : summary?.todayLogs || 0}
             </span>
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
               thao tác
             </span>
           </div>
-          <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+          <div className="mt-2 min-h-8 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
             Ghi nhận theo thời gian thực
           </div>
         </div>
 
         {/* Card 3: Người thao tác nhiều nhất */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between">
+        <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex min-h-12 items-center justify-between gap-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Quản trị viên tích cực
             </span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
               <GroupIcon className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate max-w-[200px]">
+          <div className="mt-3 flex h-10 items-center gap-2">
+            <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white min-w-0 max-w-full truncate">
               {isLoading ? "..." : summary?.mostActiveUser || "Admin"}
             </span>
           </div>
-          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-2 min-h-8 text-xs text-gray-500 dark:text-gray-400">
             Thực hiện nhiều tác vụ quản trị nhất
           </div>
         </div>
 
         {/* Card 4: Cơ cấu thao tác */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between">
+        <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex min-h-12 items-center justify-between gap-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Cơ cấu thao tác
             </span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
               <ShootingStarIcon className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex h-10 flex-wrap items-center gap-x-2">
             <div className="text-xs">
               <span className="text-gray-500">Sửa: </span>
               <strong className="text-blue-600 dark:text-blue-400">
@@ -427,7 +431,7 @@ export default function AuditLogsTable() {
               </strong>
             </div>
           </div>
-          <div className="mt-2 text-xs text-gray-400">
+          <div className="mt-2 min-h-8 text-xs text-gray-400">
             Phân bổ loại hành động chỉnh sửa
           </div>
         </div>
@@ -489,42 +493,42 @@ export default function AuditLogsTable() {
 
         {/* Table */}
         <div className="max-w-full overflow-x-auto">
-          <Table>
+          <Table className="w-full min-w-[960px]! table-fixed">
             <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
               <TableRow>
                 <TableCell
                   isHeader
-                  className="min-w-[170px] px-4 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className="w-[168px] px-4 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Thời gian
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="min-w-[200px] px-4 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className="w-[200px] px-4 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Người thực hiện
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="min-w-[130px] px-4 py-3.5 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
+                  className="w-[144px] px-4 py-3.5 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
                   Hành động
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="min-w-[150px] px-4 py-3.5 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
+                  className="w-[144px] px-4 py-3.5 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
                   Đối tượng
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="min-w-[300px] px-4 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className="px-4 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Nội dung tóm tắt
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="min-w-[120px] px-4 py-3.5 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
+                  className="w-[128px] px-4 py-3.5 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
                   Chi tiết
                 </TableCell>
@@ -541,7 +545,7 @@ export default function AuditLogsTable() {
                     className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition"
                   >
                     {/* Thời gian */}
-                    <TableCell className="min-w-[170px] px-4 py-3.5">
+                    <TableCell className="w-[168px] px-4 py-3.5">
                       <div className="flex flex-col">
                         <span className="font-semibold text-gray-800 text-xs dark:text-white/90">
                           {formatDate(log.createdAt)}
@@ -553,16 +557,19 @@ export default function AuditLogsTable() {
                     </TableCell>
 
                     {/* Người thực hiện */}
-                    <TableCell className="min-w-[200px] px-4 py-3.5">
+                    <TableCell className="w-[200px] px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-brand-600 to-brand-400 text-white font-semibold text-xs shadow-sm">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-brand-600 to-brand-400 text-white font-semibold text-xs shadow-sm">
                           {initial}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span
+                            title={log.userName || "Admin"}
+                            className="truncate font-semibold text-gray-800 text-theme-sm dark:text-white/90"
+                          >
                             {log.userName || "Admin"}
                           </span>
-                          <span className="text-xs text-gray-400 truncate max-w-[160px]">
+                          <span className="text-xs text-gray-400 truncate max-w-full">
                             {log.userEmail || "Hệ thống"}
                           </span>
                         </div>
@@ -570,17 +577,17 @@ export default function AuditLogsTable() {
                     </TableCell>
 
                     {/* Hành động */}
-                    <TableCell className="min-w-[130px] px-4 py-3.5 text-center">
+                    <TableCell className="w-[144px] px-4 py-3.5 text-center">
                       {getActionBadge(log.action)}
                     </TableCell>
 
                     {/* Đối tượng */}
-                    <TableCell className="min-w-[150px] px-4 py-3.5 text-center">
+                    <TableCell className="w-[144px] px-4 py-3.5 text-center">
                       {getEntityBadge(log.entityType, log.entityId)}
                     </TableCell>
 
                     {/* Nội dung tóm tắt */}
-                    <TableCell className="min-w-[300px] px-4 py-3.5 text-sm text-gray-800 dark:text-gray-200">
+                    <TableCell className="break-words px-4 py-3.5 text-sm text-gray-800 dark:text-gray-200">
                       <span>{log.summary}</span>
                       {log.changedFields && log.changedFields.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -597,12 +604,14 @@ export default function AuditLogsTable() {
                     </TableCell>
 
                     {/* Thao tác xem chi tiết */}
-                    <TableCell className="min-w-[120px] px-4 py-3.5 text-center">
+                    <TableCell className="w-[128px] px-4 py-3.5 text-center">
                       <button
+                        type="button"
+                        aria-label="Xem chi tiết thay đổi"
                         onClick={() => setSelectedLog(log)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-750 dark:hover:text-brand-400"
+                        className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-750 dark:hover:text-brand-400"
                       >
-                        <EyeIcon className="h-3.5 w-3.5" />
+                        <EyeIcon className="block size-4 shrink-0" />
                         So sánh
                       </button>
                     </TableCell>

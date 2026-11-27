@@ -336,7 +336,15 @@ export default function StudentList() {
               Danh sách tài khoản
             </h3>
 
-            <Button size="sm" onClick={() => setIsModalOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setNewUsername("");
+                setNewEmail("");
+                setNewPassword("");
+                setIsModalOpen(true);
+              }}
+            >
               Thêm người dùng
             </Button>
           </div>
@@ -597,7 +605,11 @@ export default function StudentList() {
           Thêm người dùng mới
         </h3>
 
-        <form onSubmit={handleCreateUser} className="flex flex-col gap-4">
+        <form
+          autoComplete="off"
+          onSubmit={handleCreateUser}
+          className="flex flex-col gap-4"
+        >
           <div>
             <Label htmlFor="new-student-username">
               Tên người dùng <span className="text-error-500">*</span>
@@ -605,7 +617,8 @@ export default function StudentList() {
 
             <Input
               id="new-student-username"
-              name="username"
+              name="created-student-username"
+              autoComplete="off"
               required
               type="text"
               placeholder="Nhập tên người dùng"
@@ -621,7 +634,8 @@ export default function StudentList() {
 
             <Input
               id="new-student-email"
-              name="email"
+              name="created-student-email"
+              autoComplete="off"
               required
               type="email"
               placeholder="Nhập email"
@@ -637,7 +651,8 @@ export default function StudentList() {
 
             <Input
               id="new-student-password"
-              name="password"
+              name="created-student-password"
+              autoComplete="new-password"
               required
               type="password"
               placeholder="Nhập mật khẩu"

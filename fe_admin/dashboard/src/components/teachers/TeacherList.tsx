@@ -405,7 +405,7 @@ export default function TeacherList() {
       return { text: "Đã xóa", color: "error" as const };
     }
     if (teacher.status?.id === 1) {
-      return { text: "Đang hoạt động", color: "success" as const };
+      return { text: "Hoạt động", color: "success" as const };
     }
     if (teacher.status?.id === 2) {
       return { text: "Đã hủy", color: "error" as const };
@@ -554,8 +554,8 @@ export default function TeacherList() {
       {/* Main Card */}
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pb-3 pt-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6">
         {/* Header & Controls */}
-        <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
               Danh sách giảng viên
             </h3>
@@ -624,7 +624,7 @@ export default function TeacherList() {
               }}
             >
               <option value="">Tất cả trạng thái</option>
-              <option value="1">Đang hoạt động</option>
+              <option value="1">Hoạt động</option>
               <option value="2">Đã hủy</option>
             </select>
           </div>
@@ -632,7 +632,7 @@ export default function TeacherList() {
 
         {/* Table */}
         <div className="max-w-full overflow-x-auto">
-          <Table>
+          <Table className="w-full min-w-[940px]!">
             <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
               <TableRow>
                 <TableCell
@@ -661,7 +661,7 @@ export default function TeacherList() {
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="min-w-[130px] px-6 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  className="min-w-[150px] whitespace-nowrap px-6 py-3.5 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Trạng thái
                 </TableCell>
@@ -736,7 +736,7 @@ export default function TeacherList() {
                     </TableCell>
 
                     {/* Trạng thái */}
-                    <TableCell className="min-w-[130px] px-6 py-3">
+                    <TableCell className="min-w-[150px] whitespace-nowrap px-6 py-3">
                       <Badge size="sm" color={displayStatus.color}>
                         {displayStatus.text}
                       </Badge>
@@ -968,7 +968,11 @@ export default function TeacherList() {
           Thêm giảng viên mới
         </h3>
 
-        <div className="flex flex-col gap-4">
+        <form
+          autoComplete="off"
+          onSubmit={handleCreateTeacher}
+          className="flex flex-col gap-4"
+        >
           {/* 1. Ảnh đại diện */}
           <div>
             <Label>Ảnh đại diện</Label>
@@ -1050,10 +1054,14 @@ export default function TeacherList() {
 
           {/* 2. Email giảng viên (thay thế tên đăng nhập) */}
           <div>
-            <Label>
+            <Label htmlFor="new-teacher-email">
               Email giảng viên <span className="text-error-500">*</span>
             </Label>
             <Input
+              id="new-teacher-email"
+              name="created-teacher-email"
+              autoComplete="off"
+              required
               type="email"
               placeholder="Ví dụ: giangvien@gmail.com"
               value={newEmail}
@@ -1063,10 +1071,14 @@ export default function TeacherList() {
 
           {/* 3. Tên giảng viên */}
           <div>
-            <Label>
+            <Label htmlFor="new-teacher-name">
               Tên giảng viên <span className="text-error-500">*</span>
             </Label>
             <Input
+              id="new-teacher-name"
+              name="created-teacher-name"
+              autoComplete="off"
+              required
               type="text"
               placeholder="Ví dụ: Nguyễn Văn An"
               value={newFullName}
@@ -1091,9 +1103,12 @@ export default function TeacherList() {
 
           {/* 5. Mật khẩu ban đầu có con mắt toggle */}
           <div>
-            <Label>Mật khẩu ban đầu</Label>
+            <Label htmlFor="new-teacher-password">Mật khẩu ban đầu</Label>
             <div className="relative">
               <Input
+                id="new-teacher-password"
+                name="created-teacher-password"
+                autoComplete="new-password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Mặc định: 123456"
                 value={newPassword}
@@ -1120,11 +1135,11 @@ export default function TeacherList() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleCreateTeacher} disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Đang xử lý..." : "Lưu giảng viên"}
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* CONFIRMATION MODAL */}

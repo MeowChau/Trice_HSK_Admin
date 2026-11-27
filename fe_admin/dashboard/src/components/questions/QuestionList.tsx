@@ -22,6 +22,7 @@ import {
 import Pagination from "../tables/Pagination";
 import {
   PlusIcon,
+  PencilIcon,
   EyeIcon,
   TrashBinIcon,
   ShootingStarIcon,
@@ -316,10 +317,10 @@ export default function QuestionList() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Top Header & Action */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 basis-96">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Ngân hàng câu hỏi HSK
           </h1>
@@ -328,7 +329,7 @@ export default function QuestionList() {
             đến HSK 9
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
             size="sm"
@@ -341,31 +342,33 @@ export default function QuestionList() {
           >
             {isRefreshing ? "Đang đồng bộ..." : "Làm mới"}
           </Button>
-          <Link href="/questions/create">
-            <Button size="sm" startIcon={<PlusIcon className="w-5 h-5" />}>
-              Thêm câu hỏi mới
-            </Button>
+          <Link
+            href="/questions/create"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-500 px-4 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+          >
+            <PlusIcon aria-hidden="true" className="block size-5 shrink-0" />
+            Thêm câu hỏi mới
           </Link>
         </div>
       </div>
 
       {/* KPI Stats Bar */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Total Questions */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
-          <div className="flex items-center justify-between">
+          <div className="flex min-h-10 items-center justify-between gap-3">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
               Tổng câu hỏi
             </span>
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
               <DocsIcon className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
+          <div className="mt-4 flex h-8 items-center justify-between gap-2">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {summary
-                ? summary.totalQuestions.toLocaleString()
-                : totalItems.toLocaleString()}
+                ? summary.totalQuestions.toLocaleString("vi-VN")
+                : totalItems.toLocaleString("vi-VN")}
             </span>
             <Badge variant="light" color="primary" size="sm">
               HSK 1 - 9
@@ -375,62 +378,62 @@ export default function QuestionList() {
 
         {/* Listening Skills */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
-          <div className="flex items-center justify-between">
+          <div className="flex min-h-10 items-center justify-between gap-3">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Kỹ năng Nghe hiểu
+              Kỹ năng nghe hiểu
             </span>
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sky-50 text-sky-500 dark:bg-sky-500/10">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-sky-50 text-sky-500 dark:bg-sky-500/10">
               <AudioIcon className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
+          <div className="mt-4 flex h-8 items-center justify-between gap-2">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {summary?.skillsCount?.LISTENING
-                ? summary.skillsCount.LISTENING.toLocaleString()
+                ? summary.skillsCount.LISTENING.toLocaleString("vi-VN")
                 : "0"}
             </span>
             <span className="text-xs text-sky-600 dark:text-sky-400 font-medium">
-              Kèm Audio
+              Kèm âm thanh
             </span>
           </div>
         </div>
 
         {/* Reading Skills */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
-          <div className="flex items-center justify-between">
+          <div className="flex min-h-10 items-center justify-between gap-3">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Kỹ năng Đọc hiểu
+              Kỹ năng đọc hiểu
             </span>
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10">
               <FileIcon className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
+          <div className="mt-4 flex h-8 items-center justify-between gap-2">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {summary?.skillsCount?.READING
-                ? summary.skillsCount.READING.toLocaleString()
+                ? summary.skillsCount.READING.toLocaleString("vi-VN")
                 : "0"}
             </span>
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-              Chữ Hán & Pinyin
+              Chữ Hán và pinyin
             </span>
           </div>
         </div>
 
         {/* Game PK Questions */}
         <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
-          <div className="flex items-center justify-between">
+          <div className="flex min-h-10 items-center justify-between gap-3">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Câu hỏi Game PK 1v1
+              Câu hỏi game PK 1v1
             </span>
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 text-amber-500 dark:bg-amber-500/10">
+            <div className="inline-flex size-10 shrink-0 items-center justify-center [&>svg]:block rounded-xl bg-amber-50 text-amber-500 dark:bg-amber-500/10">
               <ShootingStarIcon className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
+          <div className="mt-4 flex h-8 items-center justify-between gap-2">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {summary?.gameQuestionsCount
-                ? summary.gameQuestionsCount.toLocaleString()
+                ? summary.gameQuestionsCount.toLocaleString("vi-VN")
                 : "0"}
             </span>
             <Badge variant="light" color="warning" size="sm">
@@ -450,11 +453,12 @@ export default function QuestionList() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Tìm kiếm câu hỏi"
                 placeholder="Tìm kiếm câu hỏi (chữ Hán, pinyin, dịch nghĩa)..."
                 className="w-full h-11 pl-11 pr-4 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
               />
               <svg
-                className="absolute left-3.5 top-3 w-5 h-5 text-gray-400"
+                className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-gray-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -486,7 +490,7 @@ export default function QuestionList() {
           {/* Filter Dropdowns Grid */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 pt-2 border-t border-gray-100 dark:border-gray-800">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Bài trong sách HSK 1
               </label>
               <select
@@ -507,7 +511,7 @@ export default function QuestionList() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Trạng thái biên soạn
               </label>
               <select
@@ -525,10 +529,11 @@ export default function QuestionList() {
             </div>
             {/* HSK Level Filter */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Cấp độ HSK
               </label>
               <select
+                aria-label="Cấp độ HSK"
                 value={selectedHsk}
                 onChange={(e) => setSelectedHsk(e.target.value)}
                 className="w-full h-10 px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
@@ -544,10 +549,11 @@ export default function QuestionList() {
 
             {/* Skill Filter */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Kỹ năng
               </label>
               <select
+                aria-label="Kỹ năng"
                 value={selectedSkill}
                 onChange={(e) => setSelectedSkill(e.target.value)}
                 className="w-full h-10 px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
@@ -562,10 +568,11 @@ export default function QuestionList() {
 
             {/* Type Filter */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Dạng câu hỏi
               </label>
               <select
+                aria-label="Dạng câu hỏi"
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="w-full h-10 px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
@@ -582,10 +589,11 @@ export default function QuestionList() {
 
             {/* Difficulty Filter */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Độ khó
               </label>
               <select
+                aria-label="Độ khó"
                 value={selectedDifficulty}
                 onChange={(e) => setSelectedDifficulty(e.target.value)}
                 className="w-full h-10 px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
@@ -601,10 +609,11 @@ export default function QuestionList() {
 
             {/* Game PK Filter */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Chế độ Game PK
               </label>
               <select
+                aria-label="Chế độ game PK"
                 value={selectedGameFilter}
                 onChange={(e) => setSelectedGameFilter(e.target.value)}
                 className="w-full h-10 px-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
@@ -638,42 +647,42 @@ export default function QuestionList() {
         )}
 
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="w-full min-w-[1040px]! table-fixed">
             <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
                 <TableCell
                   isHeader
-                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                  className="w-[144px] whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
-                  # Mã & Cấp độ
+                  # Mã & cấp độ
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                  className="w-[200px] whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
-                  Kỹ năng & Dạng bài
+                  Kỹ năng & dạng bài
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                  className=" whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
                   Nội dung câu hỏi
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-5 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                  className="w-[112px] whitespace-nowrap px-4 py-3.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
-                  Media
+                  Tệp đính kèm
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-5 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                  className="w-[176px] whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
-                  Đáp án & Độ khó
+                  Đáp án & độ khó
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-5 py-3.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400"
+                  className="w-[140px] whitespace-nowrap px-4 py-3.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
                   Thao tác
                 </TableCell>
@@ -730,7 +739,7 @@ export default function QuestionList() {
                       className="border-b border-gray-100 hover:bg-gray-50/60 dark:border-gray-800/80 dark:hover:bg-gray-800/30 transition-colors"
                     >
                       {/* ID & HSK Level */}
-                      <TableCell className="px-5 py-4 whitespace-nowrap">
+                      <TableCell className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
                           <span
                             className={`inline-flex items-center justify-center font-bold text-xs px-2.5 py-1 rounded-lg border ${hskStyle.bg} ${hskStyle.text} ${hskStyle.border}`}
@@ -744,7 +753,7 @@ export default function QuestionList() {
                       </TableCell>
 
                       {/* Skill & Type */}
-                      <TableCell className="px-5 py-4 whitespace-nowrap">
+                      <TableCell className="px-4 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-1 items-start">
                           <Badge
                             variant="light"
@@ -761,7 +770,7 @@ export default function QuestionList() {
                       </TableCell>
 
                       {/* Question Content */}
-                      <TableCell className="px-5 py-4 max-w-md">
+                      <TableCell className="min-w-0 break-words px-4 py-4">
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
                             {q.payload?.text || "Chưa có nội dung"}
@@ -791,13 +800,15 @@ export default function QuestionList() {
                       </TableCell>
 
                       {/* Media */}
-                      <TableCell className="px-5 py-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5">
+                      <TableCell className="px-4 py-4 text-center whitespace-nowrap">
+                        <div className="flex min-h-8 items-center justify-center gap-1.5">
                           {hasAudio ? (
                             <button
                               onClick={() => toggleAudio(q)}
-                              title="Nghe audio"
-                              className={`p-2 rounded-lg transition-colors ${
+                              type="button"
+                              aria-label="Nghe âm thanh"
+                              title="Nghe âm thanh"
+                              className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                                 activeAudioUrl === String(q.id) &&
                                 isPlayingAudio
                                   ? "bg-brand-500 text-white animate-pulse"
@@ -822,8 +833,9 @@ export default function QuestionList() {
                               }
                               target="_blank"
                               rel="noreferrer"
+                              aria-label="Xem ảnh minh họa"
                               title="Xem ảnh minh họa"
-                              className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-400 transition-colors"
+                              className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-400 transition-colors"
                             >
                               <FileIcon className="w-4 h-4" />
                             </a>
@@ -832,7 +844,7 @@ export default function QuestionList() {
                       </TableCell>
 
                       {/* Answer & Difficulty */}
-                      <TableCell className="px-5 py-4 whitespace-nowrap">
+                      <TableCell className="px-4 py-4 whitespace-nowrap">
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-1.5">
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-800">
@@ -861,29 +873,44 @@ export default function QuestionList() {
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell className="px-5 py-4 text-right whitespace-nowrap">
+                      <TableCell className="px-4 py-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <Link
-                            href={`/questions/${q.id}/edit`}
-                            className="rounded-lg px-2 py-1 text-xs font-medium text-brand-600"
+                            href={"/questions/" + q.id + "/edit"}
+                            aria-label={
+                              q.skill === "LISTENING" && !hasAudio
+                                ? "Gắn âm thanh"
+                                : "Sửa câu hỏi"
+                            }
+                            title={
+                              q.skill === "LISTENING" && !hasAudio
+                                ? "Gắn âm thanh"
+                                : "Sửa câu hỏi"
+                            }
+                            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-brand-600 transition hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
                           >
-                            {q.skill === "LISTENING" && !hasAudio
-                              ? "Gắn audio"
-                              : "Sửa"}
+                            <PencilIcon
+                              aria-hidden="true"
+                              className="block size-4"
+                            />
                           </Link>
                           <button
                             onClick={() => {
                               setPreviewQuestion(q);
                             }}
+                            type="button"
+                            aria-label="Xem trước mô phỏng học viên"
                             title="Xem trước mô phỏng học viên"
-                            className="p-2 text-gray-500 rounded-lg hover:bg-gray-100 hover:text-brand-500 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-brand-400 transition-colors"
+                            className="inline-flex size-8 shrink-0 items-center justify-center text-gray-500 rounded-lg hover:bg-gray-100 hover:text-brand-500 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-brand-400 transition-colors"
                           >
                             <EyeIcon className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteTargetId(q.id)}
+                            type="button"
+                            aria-label="Xóa câu hỏi"
                             title="Xóa câu hỏi"
-                            className="p-2 text-gray-500 rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
+                            className="inline-flex size-8 shrink-0 items-center justify-center text-gray-500 rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                           >
                             <TrashBinIcon className="w-4 h-4" />
                           </button>
@@ -899,8 +926,8 @@ export default function QuestionList() {
 
         {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 p-4 dark:border-gray-800">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
               Trang {page} / {totalPages} (Tổng {totalItems} câu)
             </span>
             <Pagination

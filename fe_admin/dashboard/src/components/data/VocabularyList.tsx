@@ -282,8 +282,8 @@ export default function VocabularyList() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 basis-96">
           <div className="flex items-center gap-2.5">
             <span className="p-2 bg-brand-50 text-brand-600 rounded-xl dark:bg-brand-500/10 dark:text-brand-400">
               <span className="text-xl">📖</span>
@@ -298,7 +298,7 @@ export default function VocabularyList() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/data/topics">
             <Button
               variant="outline"
@@ -320,7 +320,11 @@ export default function VocabularyList() {
 
       {/* Level Selection Tabs (HSK 1 - 9) */}
       <div className="p-2 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <div
+          role="group"
+          aria-label="Cấp độ HSK"
+          className="flex flex-wrap items-center gap-2"
+        >
           <span className="text-xs font-bold text-gray-400 px-3 uppercase tracking-wider shrink-0">
             Cấp độ HSK:
           </span>
@@ -329,6 +333,8 @@ export default function VocabularyList() {
 
             return (
               <button
+                type="button"
+                aria-pressed={isSelected}
                 key={lvl}
                 onClick={() => handleHskChange(lvl)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
@@ -346,18 +352,19 @@ export default function VocabularyList() {
 
       {/* Filter and Search Bar */}
       <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800 space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="grid grid-cols-1 items-center gap-4 xl:grid-cols-2">
           {/* Search box */}
           <div className="flex-1 relative">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo chữ Hán (你好), Pinyin (ni hao), hoặc nghĩa tiếng Việt..."
+              aria-label="Tìm từ vựng theo chữ Hán, pinyin hoặc nghĩa tiếng Việt"
+              placeholder="Chữ Hán, pinyin, nghĩa..."
               className="w-full h-11 pl-11 pr-4 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
             />
             <svg
-              className="absolute left-3.5 top-3 w-5 h-5 text-gray-400"
+              className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-gray-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -373,8 +380,9 @@ export default function VocabularyList() {
 
           {/* Topic / Lesson Dropdown */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="min-w-[260px]">
+            <div className="min-w-0 flex-1">
               <select
+                aria-label="Bài học từ vựng"
                 value={selectedTopic}
                 onChange={(e) => {
                   setSelectedTopic(e.target.value);

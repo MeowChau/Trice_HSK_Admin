@@ -381,7 +381,11 @@ export default function StreakLeaderboard() {
 
       {/* 2. TOP 3 PODIUM (BỤC VINH DANH) */}
       {filteredLeaderboard.length >= 3 && (
-        <div className="rounded-3xl border border-gray-200 bg-gradient-to-b from-gray-50/80 via-white to-white p-6 shadow-sm dark:border-gray-800 dark:from-gray-900/40 dark:via-gray-900/20 dark:to-transparent">
+        <div
+          role="region"
+          aria-label="Bục vinh danh"
+          className="rounded-3xl border border-gray-200 bg-gradient-to-b from-gray-50/80 via-white to-white p-6 shadow-sm dark:border-gray-800 dark:from-gray-900/40 dark:via-gray-900/20 dark:to-transparent"
+        >
           <div className="text-center mb-6">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/70 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
               🏆 BỤC VINH DANH QUÁN QUÂN
@@ -394,7 +398,7 @@ export default function StreakLeaderboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end max-w-4xl mx-auto pt-4 pb-2">
             {/* HẠNG 2: SILVER */}
             {top2 && (
-              <div className="order-2 md:order-1 flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-md dark:border-slate-700/60 dark:bg-gray-850">
+              <div className="order-2 md:order-1 flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-slate-700/60 dark:bg-gray-850">
                 <div className="relative mb-3">
                   <div className="relative h-20 w-20 overflow-hidden rounded-full border-4 border-slate-300 shadow-md dark:border-slate-600">
                     {getAvatarUrl(top2.photo) ? (
@@ -403,7 +407,7 @@ export default function StreakLeaderboard() {
                         alt={top2.fullName}
                         fill
                         sizes="80px"
-                        className="object-cover"
+                        className="block object-cover object-center"
                         unoptimized
                       />
                     ) : (
@@ -412,8 +416,12 @@ export default function StreakLeaderboard() {
                       </div>
                     )}
                   </div>
-                  <span className="absolute -bottom-2 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-800 font-extrabold text-sm shadow-md border-2 border-white dark:border-gray-850">
-                    🥈 2
+                  <span
+                    className="absolute -bottom-1 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-800 text-2xl leading-none shadow-md border-2 border-white dark:border-gray-850"
+                    role="img"
+                    aria-label="Hạng 2"
+                  >
+                    🥈
                   </span>
                 </div>
 
@@ -439,7 +447,7 @@ export default function StreakLeaderboard() {
 
             {/* HẠNG 1: GOLD (Nổi bật nhất) */}
             {top1 && (
-              <div className="order-1 md:order-2 flex flex-col items-center text-center rounded-2xl border-2 border-amber-400 bg-gradient-to-b from-amber-50/70 via-white to-amber-50/20 p-6 shadow-lg backdrop-blur transition hover:-translate-y-1 hover:shadow-xl dark:border-amber-500/60 dark:from-amber-950/20 dark:via-gray-850 dark:to-gray-850 relative -mt-4">
+              <div className="order-1 md:order-2 flex flex-col items-center text-center rounded-2xl border-2 border-amber-400 bg-gradient-to-b from-amber-50/70 via-white to-amber-50/20 p-6 shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:border-amber-500/60 dark:from-amber-950/20 dark:via-gray-850 dark:to-gray-850 relative -mt-4">
                 <span className="text-3xl absolute -top-5">👑</span>
 
                 <div className="relative mb-3 mt-1">
@@ -450,7 +458,7 @@ export default function StreakLeaderboard() {
                         alt={top1.fullName}
                         fill
                         sizes="96px"
-                        className="object-cover"
+                        className="block object-cover object-center"
                         unoptimized
                       />
                     ) : (
@@ -459,8 +467,12 @@ export default function StreakLeaderboard() {
                       </div>
                     )}
                   </div>
-                  <span className="absolute -bottom-2 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-amber-400 text-amber-950 font-black text-sm shadow-md border-2 border-white dark:border-gray-850">
-                    🥇 1
+                  <span
+                    className="absolute -bottom-1 -right-2 flex h-11 w-11 items-center justify-center rounded-full bg-amber-400 text-amber-950 text-3xl leading-none shadow-md border-2 border-white dark:border-gray-850"
+                    role="img"
+                    aria-label="Hạng 1"
+                  >
+                    🥇
                   </span>
                 </div>
 
@@ -487,7 +499,7 @@ export default function StreakLeaderboard() {
 
             {/* HẠNG 3: BRONZE */}
             {top3 && (
-              <div className="order-3 flex flex-col items-center text-center rounded-2xl border border-amber-200/60 bg-white/90 p-5 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-md dark:border-amber-900/40 dark:bg-gray-850">
+              <div className="order-3 flex flex-col items-center text-center rounded-2xl border border-amber-200/60 bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-amber-900/40 dark:bg-gray-850">
                 <div className="relative mb-3">
                   <div className="relative h-20 w-20 overflow-hidden rounded-full border-4 border-amber-600/50 shadow-md dark:border-amber-700/60">
                     {getAvatarUrl(top3.photo) ? (
@@ -496,7 +508,7 @@ export default function StreakLeaderboard() {
                         alt={top3.fullName}
                         fill
                         sizes="80px"
-                        className="object-cover"
+                        className="block object-cover object-center"
                         unoptimized
                       />
                     ) : (
@@ -505,8 +517,12 @@ export default function StreakLeaderboard() {
                       </div>
                     )}
                   </div>
-                  <span className="absolute -bottom-2 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-amber-700 text-white font-extrabold text-sm shadow-md border-2 border-white dark:border-gray-850">
-                    🥉 3
+                  <span
+                    className="absolute -bottom-1 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-amber-700 text-white text-2xl leading-none shadow-md border-2 border-white dark:border-gray-850"
+                    role="img"
+                    aria-label="Hạng 3"
+                  >
+                    🥉
                   </span>
                 </div>
 
@@ -701,15 +717,15 @@ export default function StreakLeaderboard() {
                     <TableCell className="w-16 px-4 py-3.5 text-center">
                       {hasStreak && rank === 1 ? (
                         <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-700 font-bold text-xs shadow-sm">
-                          🥇 1
+                          🥇
                         </span>
                       ) : hasStreak && rank === 2 ? (
                         <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-slate-700 font-bold text-xs shadow-sm">
-                          🥈 2
+                          🥈
                         </span>
                       ) : hasStreak && rank === 3 ? (
                         <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-50 text-amber-800 font-bold text-xs border border-amber-300">
-                          🥉 3
+                          🥉
                         </span>
                       ) : (
                         <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">

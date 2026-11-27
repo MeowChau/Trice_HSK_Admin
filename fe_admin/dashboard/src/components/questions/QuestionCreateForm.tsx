@@ -15,6 +15,7 @@ import {
   type QuestionDraft,
   type QuestionRecord,
 } from "@/lib/question-editor";
+import FileUpload from "@/components/form/input/FileUpload";
 import AudioClipPlayer from "./AudioClipPlayer";
 import QuestionPreview from "./QuestionPreview";
 
@@ -93,16 +94,12 @@ export function MediaField({
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium">{label}</label>
-      <input
-        type="file"
-        aria-label={`Tải ${label.toLowerCase()}`}
+      <FileUpload
+        label={label}
+        kind={kind}
         accept={accept}
         disabled={busy}
-        className="block w-full rounded-lg border border-dashed border-gray-300 p-3 text-sm dark:border-gray-700"
-        onChange={(event) => {
-          void upload(event.target.files?.[0]);
-          event.target.value = "";
-        }}
+        onFileSelect={upload}
       />
       {message && (
         <p role="status" className="text-xs text-gray-500">
