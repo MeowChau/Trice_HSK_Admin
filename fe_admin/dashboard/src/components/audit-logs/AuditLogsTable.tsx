@@ -627,7 +627,7 @@ export default function AuditLogsTable() {
                         className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-750 dark:hover:text-brand-400"
                       >
                         <EyeIcon className="block size-4 shrink-0" />
-                        So sánh
+                        Chi tiết
                       </button>
                     </TableCell>
                   </TableRow>
@@ -650,7 +650,7 @@ export default function AuditLogsTable() {
 
         {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-gray-800">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
             <span className="text-xs text-gray-500 dark:text-gray-400">
               Trang {page} / {totalPages} (Tổng số {totalItems} thao tác)
             </span>

@@ -192,10 +192,10 @@ export default function RecentUsers() {
                       {user.username || "Chưa cập nhật"}
                     </p>
                   </TableCell>
-                  <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                  <TableCell className="whitespace-nowrap py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                     {user.currentHskLevel ? `HSK ${user.currentHskLevel}` : "-"}
                   </TableCell>
-                  <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                  <TableCell className="whitespace-nowrap py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                     <Badge size="sm" color={displayStatus.color}>
                       {displayStatus.text}
                     </Badge>

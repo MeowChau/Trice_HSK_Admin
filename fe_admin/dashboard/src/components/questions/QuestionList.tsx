@@ -454,8 +454,8 @@ export default function QuestionList() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 aria-label="Tìm kiếm câu hỏi"
-                placeholder="Tìm kiếm câu hỏi (chữ Hán, pinyin, dịch nghĩa)..."
-                className="w-full h-11 pl-11 pr-4 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
+                placeholder="Chữ Hán, pinyin, nghĩa tiếng Việt"
+                className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:placeholder-gray-400"
               />
               <svg
                 className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-gray-400"
@@ -647,7 +647,7 @@ export default function QuestionList() {
         )}
 
         <div className="overflow-x-auto">
-          <Table className="w-full min-w-[1040px]! table-fixed">
+          <Table className="w-full min-w-[1060px]! table-fixed">
             <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
                 <TableCell
@@ -658,7 +658,7 @@ export default function QuestionList() {
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="w-[200px] whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400"
+                  className="w-[220px] whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
                   Kỹ năng & dạng bài
                 </TableCell>
@@ -682,7 +682,7 @@ export default function QuestionList() {
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="w-[140px] whitespace-nowrap px-4 py-3.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400"
+                  className="w-[140px] whitespace-nowrap px-4 py-3.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400"
                 >
                   Thao tác
                 </TableCell>
@@ -760,10 +760,10 @@ export default function QuestionList() {
                             color={skillInfo.color}
                             size="sm"
                           >
-                            <span className="mr-1">{skillInfo.icon}</span>
+                            <span aria-hidden="true">{skillInfo.icon}</span>
                             {skillInfo.label}
                           </Badge>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="max-w-full truncate text-xs text-gray-500 dark:text-gray-400" title={TYPE_MAP[q.type] || q.type}>
                             {TYPE_MAP[q.type] || q.type}
                           </span>
                         </div>
@@ -815,13 +815,13 @@ export default function QuestionList() {
                                   : "bg-sky-50 text-sky-600 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-400"
                               }`}
                             >
-                              <AudioIcon className="w-4 h-4" />
+                              <AudioIcon className="block size-4" />
                             </button>
-                          ) : (
-                            <span className="text-xs text-gray-300 dark:text-gray-700">
-                              -
+                          ) : !hasImage ? (
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              —
                             </span>
-                          )}
+                          ) : null}
 
                           {hasImage ? (
                             <a
@@ -837,7 +837,7 @@ export default function QuestionList() {
                               title="Xem ảnh minh họa"
                               className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-400 transition-colors"
                             >
-                              <FileIcon className="w-4 h-4" />
+                              <FileIcon className="block size-4" />
                             </a>
                           ) : null}
                         </div>
@@ -873,8 +873,8 @@ export default function QuestionList() {
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell className="px-4 py-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <TableCell className="whitespace-nowrap px-4 py-4 text-center">
+                        <div className="inline-flex items-center justify-center gap-1.5">
                           <Link
                             href={"/questions/" + q.id + "/edit"}
                             aria-label={
@@ -903,7 +903,7 @@ export default function QuestionList() {
                             title="Xem trước mô phỏng học viên"
                             className="inline-flex size-8 shrink-0 items-center justify-center text-gray-500 rounded-lg hover:bg-gray-100 hover:text-brand-500 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-brand-400 transition-colors"
                           >
-                            <EyeIcon className="w-4 h-4" />
+                            <EyeIcon className="block size-4" />
                           </button>
                           <button
                             onClick={() => setDeleteTargetId(q.id)}
@@ -912,7 +912,7 @@ export default function QuestionList() {
                             title="Xóa câu hỏi"
                             className="inline-flex size-8 shrink-0 items-center justify-center text-gray-500 rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                           >
-                            <TrashBinIcon className="w-4 h-4" />
+                            <TrashBinIcon className="block size-4" />
                           </button>
                         </div>
                       </TableCell>
@@ -928,7 +928,7 @@ export default function QuestionList() {
         {totalPages > 1 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 p-4 dark:border-gray-800">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Trang {page} / {totalPages} (Tổng {totalItems} câu)
+              Trang {page}/{totalPages} · {totalItems.toLocaleString("vi-VN")} câu hỏi
             </span>
             <Pagination
               currentPage={page}

@@ -283,7 +283,7 @@ export default function VocabularyList() {
     <div className="space-y-6">
       {/* Top Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1 basis-96">
+        <div className="min-w-0 flex-1 basis-full xl:basis-80">
           <div className="flex items-center gap-2.5">
             <span className="p-2 bg-brand-50 text-brand-600 rounded-xl dark:bg-brand-500/10 dark:text-brand-400">
               <span className="text-xl">📖</span>
@@ -354,7 +354,7 @@ export default function VocabularyList() {
       <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-theme-xs dark:bg-gray-900 dark:border-gray-800 space-y-4">
         <div className="grid grid-cols-1 items-center gap-4 xl:grid-cols-2">
           {/* Search box */}
-          <div className="flex-1 relative">
+          <div className="relative min-w-0">
             <input
               type="text"
               value={searchTerm}

@@ -418,7 +418,7 @@ export default function StreakLeaderboard() {
             {/* HẠNG 2: SILVER */}
             {top2 && (
               <div className="order-2 md:order-1 flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-slate-700/60 dark:bg-gray-850">
-                <div className="relative mb-3">
+                <div className="relative mb-6">
                   <div className="relative h-20 w-20 overflow-hidden rounded-full border-4 border-slate-300 shadow-md dark:border-slate-600">
                     {getAvatarUrl(top2.photo) ? (
                       <Image
@@ -436,7 +436,7 @@ export default function StreakLeaderboard() {
                     )}
                   </div>
                   <span
-                    className="absolute -bottom-1 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-800 text-2xl leading-none shadow-md border-2 border-white dark:border-gray-850"
+                    className="absolute -bottom-4 left-1/2 flex size-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-200 text-3xl leading-none shadow-md dark:border-gray-850"
                     role="img"
                     aria-label="Hạng 2"
                   >
@@ -467,9 +467,7 @@ export default function StreakLeaderboard() {
             {/* HẠNG 1: GOLD (Nổi bật nhất) */}
             {top1 && (
               <div className="order-1 md:order-2 flex flex-col items-center text-center rounded-2xl border-2 border-amber-400 bg-gradient-to-b from-amber-50/70 via-white to-amber-50/20 p-6 shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:border-amber-500/60 dark:from-amber-950/20 dark:via-gray-850 dark:to-gray-850 relative -mt-4">
-                <span className="text-3xl absolute -top-5">👑</span>
-
-                <div className="relative mb-3 mt-1">
+                <div className="relative mb-7 mt-1">
                   <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-amber-400 shadow-xl dark:border-amber-400 ring-4 ring-amber-300/40">
                     {getAvatarUrl(top1.photo) ? (
                       <Image
@@ -487,7 +485,7 @@ export default function StreakLeaderboard() {
                     )}
                   </div>
                   <span
-                    className="absolute -bottom-1 -right-2 flex h-11 w-11 items-center justify-center rounded-full bg-amber-400 text-amber-950 text-3xl leading-none shadow-md border-2 border-white dark:border-gray-850"
+                    className="absolute -bottom-4 left-1/2 flex size-12 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-amber-400 text-4xl leading-none shadow-md dark:border-gray-850"
                     role="img"
                     aria-label="Hạng 1"
                   >
@@ -521,7 +519,7 @@ export default function StreakLeaderboard() {
             {/* HẠNG 3: BRONZE */}
             {top3 && (
               <div className="order-3 flex flex-col items-center text-center rounded-2xl border border-amber-200/60 bg-white/90 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-amber-900/40 dark:bg-gray-850">
-                <div className="relative mb-3">
+                <div className="relative mb-6">
                   <div className="relative h-20 w-20 overflow-hidden rounded-full border-4 border-amber-600/50 shadow-md dark:border-amber-700/60">
                     {getAvatarUrl(top3.photo) ? (
                       <Image
@@ -539,7 +537,7 @@ export default function StreakLeaderboard() {
                     )}
                   </div>
                   <span
-                    className="absolute -bottom-1 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-amber-700 text-white text-2xl leading-none shadow-md border-2 border-white dark:border-gray-850"
+                    className="absolute -bottom-4 left-1/2 flex size-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-amber-700 text-3xl leading-none shadow-md dark:border-gray-850"
                     role="img"
                     aria-label="Hạng 3"
                   >

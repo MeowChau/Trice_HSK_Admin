@@ -22,7 +22,7 @@ export default function DistributionChart({ id, title, labels, series, error }: 
     chart: {
       id,
       type: "pie",
-      fontFamily: "Outfit, sans-serif",
+      fontFamily: "Inter, sans-serif",
       // Avoid animating a stale, empty initial pie while API data is loading.
       animations: { enabled: false },
       redrawOnParentResize: true,
@@ -31,7 +31,7 @@ export default function DistributionChart({ id, title, labels, series, error }: 
     labels,
     colors,
     grid: { padding: { top: 12, right: 12, bottom: 12, left: 12 } },
-    plotOptions: { pie: { dataLabels: { offset: -8 } } },
+    plotOptions: { pie: { customScale: 0.9, expandOnClick: false, dataLabels: { offset: -12 } } },
     legend: { position: "bottom", fontSize: "12px" },
     dataLabels: {
       enabled: true,

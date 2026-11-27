@@ -25,6 +25,11 @@ type RegistrationData = {
 
 const displayDate = (date: string) => date.split("-").reverse().join("/");
 
+function displayRange(from: string, to: string) {
+  const start = displayDate(from);
+  return `${from.slice(0, 4) === to.slice(0, 4) ? start.slice(0, 5) : start} – ${displayDate(to)}`;
+}
+
 export default function StatisticsChart() {
   const picker = useRef<flatpickr.Instance | null>(null);
   const pickerDates = useRef<Date[]>([]);
@@ -43,6 +48,17 @@ export default function StatisticsChart() {
 
     // Keep the React-owned input in place. Flatpickr's static wrapper moves it
     // to another parent, which makes remounts and hot updates fragile.
+    const updateRangeDisplay = (
+      dates: Date[],
+      _value: string,
+      instance: flatpickr.Instance,
+    ) => {
+      if (dates.length === 2) {
+        const [from, to] = dates.map((date) => instance.formatDate(date, "Y-m-d"));
+        input.value = displayRange(from, to);
+      }
+    };
+
     picker.current = flatpickr(input, {
       mode: "range",
       locale: {
@@ -73,9 +89,11 @@ export default function StatisticsChart() {
       disableMobile: true,
       defaultDate: pickerDates.current,
       clickOpens: true,
-      onReady: (_dates, _value, instance) => {
+      onReady: (dates, value, instance) => {
         instance.calendarContainer.classList.add("statistics-calendar");
+        updateRangeDisplay(dates, value, instance);
       },
+      onValueUpdate: updateRangeDisplay,
       onChange: (dates, _dateString, instance) => {
         pickerDates.current = dates.map((date) => new Date(date.getTime()));
         if (dates.length === 0) {
@@ -175,7 +193,7 @@ export default function StatisticsChart() {
         )
     : [];
   const periodLabel = range
-    ? `${displayDate(range.from)} – ${displayDate(range.to)}`
+    ? displayRange(range.from, range.to)
     : apiData
       ? `tháng ${apiData.startMonth} – tháng ${apiData.endMonth}`
       : "6 tháng hiện tại";
@@ -188,9 +206,10 @@ export default function StatisticsChart() {
     },
     colors: ["#465FFF", "#9CB9FF"], // Define line colors
     chart: {
-      fontFamily: "Outfit, sans-serif",
+      fontFamily: "Inter, sans-serif",
       height: 310,
       type: "line", // Set the chart type to 'line'
+      redrawOnParentResize: true,
       toolbar: {
         show: false, // Hide chart toolbar
       },
@@ -239,8 +258,8 @@ export default function StatisticsChart() {
     xaxis: {
       type: "category", // Category-based x-axis
       categories,
-      tickAmount: Math.min(Math.max(categories.length - 1, 1), 8),
-      labels: { hideOverlappingLabels: true },
+      tickAmount: range ? Math.min(Math.max(categories.length - 1, 1), 8) : undefined,
+      labels: { hideOverlappingLabels: Boolean(range), style: { fontSize: "11px" } },
       axisBorder: {
         show: false, // Hide x-axis border
       },
@@ -330,10 +349,10 @@ export default function StatisticsChart() {
               aria-invalid={!!dateError}
               title={
                 range
-                  ? `${displayDate(range.from)} – ${displayDate(range.to)}`
+                  ? displayRange(range.from, range.to)
                   : "Chọn khoảng ngày"
               }
-              className="h-full w-0 min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-sm font-medium leading-5 text-gray-700 outline-none ring-0 focus:ring-0 dark:text-gray-300"
+              className="h-full w-0 min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-xs font-medium leading-5 text-gray-700 outline-none ring-0 focus:ring-0 sm:text-sm dark:text-gray-300"
               placeholder="Chọn ngày"
             />
             {(range || dateError) && (

@@ -63,10 +63,12 @@ export default function MonthlySalesChart() {
     return () => requests.cancel();
   }, [load, requests]);
 
+  const maxCount = Math.max(0, ...(data?.monthlyCounts ?? []));
+  const stepSize = Math.max(1, Math.ceil(maxCount / 5));
   const options: ApexOptions = {
     colors: ["#465fff"],
     chart: {
-      fontFamily: "Outfit, sans-serif",
+      fontFamily: "Inter, sans-serif",
       type: "bar",
       height: 180,
       toolbar: {
@@ -109,18 +111,20 @@ export default function MonthlySalesChart() {
         show: false,
       },
     },
+    responsive: [{
+      breakpoint: 640,
+      options: { xaxis: { labels: { rotate: -60, rotateAlways: true } } },
+    }],
     legend: {
       show: true,
       position: "top",
       horizontalAlign: "left",
-      fontFamily: "Outfit",
+      fontFamily: "Inter, sans-serif",
     },
     yaxis: {
       min: 0,
-      stepSize: Math.max(
-        1,
-        Math.ceil(Math.max(...(data?.monthlyCounts ?? [0])) / 5),
-      ),
+      max: Math.max(1, Math.ceil(maxCount / stepSize)) * stepSize,
+      stepSize,
       decimalsInFloat: 0,
       title: {
         text: undefined,
@@ -149,7 +153,7 @@ export default function MonthlySalesChart() {
   const series = [
     {
       name: "Đề thi",
-      data: data?.monthlyCounts ?? [],
+      data: data?.monthlyCounts.map((count) => count === 0 ? null : count) ?? [],
     },
   ];
 
@@ -191,15 +195,14 @@ export default function MonthlySalesChart() {
           </div>
         ) : (
           <>
-            <div className="max-w-full overflow-x-auto custom-scrollbar">
-              <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
-                <ReactApexChart
-                  options={options}
-                  series={series}
-                  type="bar"
-                  height={180}
-                />
-              </div>
+            <div className="w-full min-w-0">
+              <ReactApexChart
+                options={options}
+                series={series}
+                type="bar"
+                height={180}
+                width="100%"
+              />
             </div>
             {data?.total === 0 && (
               <p
